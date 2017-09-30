@@ -1,5 +1,6 @@
 import mujoco_py
 from os.path import dirname
+import pdb
 
 xml = "models/pushing2d_controller.xml"
 model = mujoco_py.load_model_from_path(xml)
@@ -11,3 +12,4 @@ for i in range(100):
     for i in range(100):
         sim.step()
         viewer.render()
+    pdb.set_trace()
