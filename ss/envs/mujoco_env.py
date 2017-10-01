@@ -64,37 +64,18 @@ class MujocoEnv(gym.Env):
     def set_action(self, u):
         pass
 
-    def reset_model(self):
-        """
-        Reset the robot degrees of freedom (qpos and qvel).
-        Implement this in each subclass.
-        """
-        raise NotImplementedError
-
-    def viewer_setup(self):
-        """
-        This method is called when the viewer is initialized and after every reset
-        Optionally implement this method, if you need to tinker with camera position
-        and so forth.
-        """
-        pass
+    def reset(self):
+        self.t = 0
+        ob = self.get_obs()
+        return ob
 
     # -----------------------------
-
-    def _reset(self):
-        # self.sim.reset()
-        # mjlib.mj_resetData(self.model.ptr, self.data.ptr)
-        # ob = self.reset_model()
-        ob = self.get_obs()
-        if self.viewer is not None:
-            self.viewer_setup()
-        return ob
 
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
         self.data = self.sim.data
-        self.data.qpos = qpos
-        self.data.qvel = qvel
+        self.data.qpos[:] = qpos
+        self.data.qvel[:] = qvel
         self.sim.forward()
 
     def _step(self, u):
@@ -126,11 +107,10 @@ class MujocoEnv(gym.Env):
         #     return
         self._get_viewer().render()
         # if mode == 'rgb_array':
-        #     self._get_viewer().render()
-        #     data, width, height = self._get_viewer().get_image()
-        #     return np.fromstring(data, dtype='uint8').reshape(height, width, 3)[::-1, :, :]
-        # elif mode == 'human':
-        #     self._get_viewer().loop_once()
+        #     # self._get_viewer().render()
+
+    def get_img(self, width=480, height=480):
+        return self.sim.render(width, height, camera_name="maincam")
 
     def _get_viewer(self):
         if self.viewer is None:
