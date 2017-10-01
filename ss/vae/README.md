@@ -1,15 +1,17 @@
+This code copied from https://github.com/hwalsuklee/tensorflow-mnist-VAE
+
 # Variational Auto-Encoder for MNIST
-An implementation of variational auto-encoder (VAE) for MNIST descripbed in the paper:  
+An implementation of variational auto-encoder (VAE) for MNIST descripbed in the paper:
 * [Auto-Encoding Variational Bayes](https://arxiv.org/pdf/1312.6114) by Kingma et al.
 
 ## Results
 ### Reproduce
-Well trained VAE must be able to reproduce input image.  
-Figure 5 in the paper shows reproduce performance of learned generative models for different dimensionalities.  
-The following results can be reproduced with command:  
+Well trained VAE must be able to reproduce input image.
+Figure 5 in the paper shows reproduce performance of learned generative models for different dimensionalities.
+The following results can be reproduced with command:
 ```
 python run_main.py --dim_z <each value> --num_epochs 60
-``` 
+```
 
 <table align='center'>
 <tr align='center'>
@@ -30,8 +32,8 @@ python run_main.py --dim_z <each value> --num_epochs 60
 
 ### Denoising
 
-When training, salt & pepper noise is added to input image, so that VAE can reduce noise and restore original input image.  
-The following results can be reproduced with command:  
+When training, salt & pepper noise is added to input image, so that VAE can reduce noise and restore original input image.
+The following results can be reproduced with command:
 ```
 python run_main.py --dim_z 20 --add_noise True --num_epochs 40
 ```
@@ -49,8 +51,8 @@ python run_main.py --dim_z 20 --add_noise True --num_epochs 40
 </table>
 
 ### Learned MNIST manifold
-Visualizations of learned data manifold for generative models with 2-dim. latent space are given in Figure. 4 in the paper.  
-The following results can be reproduced with command:  
+Visualizations of learned data manifold for generative models with 2-dim. latent space are given in Figure. 4 in the paper.
+The following results can be reproduced with command:
 ```
 python run_main.py --dim_z 2 --num_epochs 60 --PMLR True
 ```
@@ -78,10 +80,10 @@ python run_main.py --dim_z <latent vector dimension>
 `python run_main.py --dim_z 20`
 
 ### Arguments
-*Required* :  
+*Required* :
 * `--dim_z`: Dimension of latent vector. *Default*: `20`
 
-*Optional* :  
+*Optional* :
 * `--results_path`: File path of output images. *Default*: `results`
 * `--add_noise`: Boolean for adding salt & pepper noise to input image. *Default*: `False`
 * `--n_hidden`: Number of hidden units in MLP. *Default*: `500`
@@ -99,10 +101,10 @@ python run_main.py --dim_z <latent vector dimension>
 * `--PMLR_n_samples`: Number of samples in order to get distribution of labeled data. *Default*: `5000`
 
 ## References
-The implementation is based on the projects:  
-[1] https://github.com/oduerr/dl_tutorial/tree/master/tensorflow/vae  
-[2] https://github.com/fastforwardlabs/vae-tf/tree/master  
-[3] https://github.com/kvfrans/variational-autoencoder  
+The implementation is based on the projects:
+[1] https://github.com/oduerr/dl_tutorial/tree/master/tensorflow/vae
+[2] https://github.com/fastforwardlabs/vae-tf/tree/master
+[3] https://github.com/kvfrans/variational-autoencoder
 [4] https://github.com/altosaar/vae
 
 ## Acknowledgements
