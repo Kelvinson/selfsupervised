@@ -18,6 +18,17 @@ class PushingEnv(MujocoEnv):
                 self.sim.data.qvel.ravel().copy()
         ])
 
+    def _step(self, action):
+        self.do_simulation(action, self.frame_skip)
+        ref_point = self.get_site_pos('reference_point')[:2]
+        reward_dist = np.linalg.norm(ref_point)
+        reward_ctrl = -np.linalg.norm(action)
+        reward = reward_dist + reward_ctrl
+        ob = self._get_obs()
+        done = np.linalg.norm(ref_point) <= 5e-3
+        return ob, reward, done, dict(reward_dist=reward_dist, reward_ctrl=reward_ctrl)
+
+
     def set_view(self, cam_id):
         self.viewer.cam.fixedcamid = cam_id
         self.viewer.cam.type = const.CAMERA_FIXED
