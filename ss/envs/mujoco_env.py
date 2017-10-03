@@ -129,6 +129,9 @@ class MujocoEnv(gym.Env):
         idx = self.model.body_names.index(six.b(body_name))
         return self.model.data.xmat[idx].reshape((3, 3))
 
+    def get_site_pos(self, site_name):
+        return self.data.get_site_xpos(site_name)  # returns 1D array with shape(3,)
+
     def state_vector(self):
         return np.concatenate([
             self.sim.data.qpos.flat,
