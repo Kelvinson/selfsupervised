@@ -95,9 +95,9 @@ class MujocoEnv(gym.Env):
         return self.model.opt.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.model.data.ctrl = ctrl
+        self.sim.data.ctrl = ctrl
         for _ in range(n_frames):
-            self.model.step()
+            self.sim.step()
 
     def _render(self, mode='human', close=False):
         # if close:
@@ -128,6 +128,9 @@ class MujocoEnv(gym.Env):
     def get_body_xmat(self, body_name):
         idx = self.model.body_names.index(six.b(body_name))
         return self.model.data.xmat[idx].reshape((3, 3))
+
+    def get_site_pos(self, site_name):
+        return self.data.get_site_xpos(site_name)  # returns 1D array with shape(3,)
 
     def state_vector(self):
         return np.concatenate([
