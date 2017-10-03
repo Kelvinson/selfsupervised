@@ -1,2 +1,3 @@
 mujoco-py<1.50.2,>=1.50.1
 Click
+joblib

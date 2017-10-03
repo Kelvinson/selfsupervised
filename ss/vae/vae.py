@@ -31,7 +31,7 @@ def gaussian_MLP_encoder(x, n_hidden, n_output, keep_prob):
         mean = gaussian_params[:, :n_output]
         # The standard deviation must be positive. Parametrize with a softplus and
         # add a small epsilon for numerical stability
-        stddev = 1e-6 + tf.nn.softplus(gaussian_params[:, n_output:])
+        stddev = 1e-5 + tf.nn.softplus(gaussian_params[:, n_output:])
 
     return mean, stddev
 
@@ -75,7 +75,7 @@ def autoencoder(x_hat, x, dim_img, dim_z, n_hidden, keep_prob):
 
     # decoding
     y = bernoulli_MLP_decoder(z, n_hidden, dim_img, keep_prob)
-    y = tf.clip_by_value(y, 1e-8, 1 - 1e-8)
+    y = tf.clip_by_value(y, 1e-5, 1 - 1e-5)
 
     # loss
     marginal_likelihood = tf.reduce_sum(x * tf.log(y) + (1 - x) * tf.log(1 - y), 1)
