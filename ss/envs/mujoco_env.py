@@ -6,6 +6,7 @@ from gym import error, spaces
 from gym.utils import seeding
 import numpy as np
 from os import path
+from mujoco_py.generated import const
 import gym
 import six
 import mujoco_py
@@ -14,13 +15,13 @@ class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip=1):
+    def __init__(self, model_path, frame_skip=1, mjviewer=mujoco_py.MjViewer):
         self.frame_skip = frame_skip
         self.model = mujoco_py.load_model_from_path(model_path)
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
         self.viewer = None
-        print("VIEWER", self.viewer)
+        self.mjviewer = mjviewer
         self.t = 0
 
         self.metadata = {
@@ -62,10 +63,14 @@ class MujocoEnv(gym.Env):
         return 0.0
 
     def set_action(self, u):
-        pass
+        self.sim.data.ctrl[:] = u
 
     def reset(self):
         self.t = 0
+        qpos = np.zeros(self.init_qpos.shape)
+        qvel = np.zeros(self.init_qvel.shape)
+        self.set_state(qpos, qvel)
+
         ob = self.get_obs()
         return ob
 
@@ -79,7 +84,7 @@ class MujocoEnv(gym.Env):
         self.sim.forward()
 
     def _step(self, u):
-        self._set_action(u)
+        self.set_action(u)
         self.sim.step()
         self.sim.forward()
         self.t += 1
@@ -112,9 +117,13 @@ class MujocoEnv(gym.Env):
     def get_img(self, width=480, height=480):
         return self.sim.render(width, height, camera_name="maincam")
 
+    def set_view(self, cam_id):
+        self.viewer.cam.fixedcamid = cam_id
+        self.viewer.cam.type = const.CAMERA_FIXED
+
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim)
+            self.viewer = self.mjviewer(self.sim)
         return self.viewer
 
     def get_body_com(self, body_name):
@@ -137,3 +146,9 @@ class MujocoEnv(gym.Env):
             self.sim.data.qpos.flat,
             self.sim.data.qvel.flat
         ])
+
+    def get_obs_dim(self):
+        return (self.obs_dim,)
+
+    def get_act_dim(self):
+        return self.action_space.shape

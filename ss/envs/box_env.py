@@ -2,8 +2,8 @@ from ss.envs.mujoco_env import MujocoEnv
 import pdb
 import numpy as np
 from gym import spaces
-from mujoco_py.generated import const
 import ss.path as path
+from mujoco_py.generated import const
 import scipy.misc
 
 class BoxEnv(MujocoEnv):

@@ -35,7 +35,7 @@ class PushingEnv(MujocoEnv):
 
     def reset(self):
         self.t = 0
-        # randomize the position and pose of the L shaped block 
+        # randomize the position and pose of the L shaped block
         angle = np.random.uniform(1./4.1, 1./3.9)*np.pi
         direction = np.random.choice([angle, -angle, (np.pi - angle), (angle - np.pi)])
         #direction = np.random.choice([np.pi*0.25, -np.pi*0.25, np.pi*0.75, -np.pi*0.75, np.pi*(1./3), -np.pi(1./3), np.pi(2./3), -np.pi(2./3)])
