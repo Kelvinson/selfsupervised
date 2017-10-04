@@ -5,12 +5,12 @@ import numpy as np
 
 def get_params(overrides={}):
     params = collections.OrderedDict()
-    params["gamma"] = 0.99
-    params["tau"] = 0.001
+    params["gamma"] = 0.95
+    params["tau"] = 1.0
     params["batch_size"] = 128
     params["observation_range"] = (-5., 5.)
     params["action_range"] = (-1., 1.)
-    params["return_range"] = (-np.inf, np.inf)
+    params["return_range"] = (-np.inf, 0)
     params["critic_l2_reg"] = 0.
     params["actor_lr"] = 1e-4
     params["critic_lr"] = 1e-3
