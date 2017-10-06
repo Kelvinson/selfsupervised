@@ -1,7 +1,7 @@
 """Copied from CS 294"""
 
 import tensorflow as tf
-from tensorflow.contrib.layers import xavier_initializer
+from tensorflow.contrib.layers import xavier_initializer, batch_norm
 import numpy as np
 import pdb
 
@@ -38,6 +38,7 @@ def build_mlp(
         reuse=False,
         ):
     with tf.variable_scope(scope, reuse=reuse):
+        # cur = batch_norm(input_tensor)
         cur = input_tensor
         for i, size in enumerate(layers[:-1]):
             cur = dense(cur, size, str(i), normc_initializer())

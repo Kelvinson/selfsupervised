@@ -10,6 +10,13 @@ class BallEnv(MujocoEnv):
     def __init__(self):
         self.ball_pos = np.zeros((2))
         self.goal_pos = np.zeros((2))
+
+        u_range = np.ones((2))
+        self.action_space = spaces.Box(-u_range, u_range)
+
+        o_range = np.ones((2))
+        self.observation_space = spaces.Box(-o_range, o_range)
+
         MujocoEnv.__init__(self, "models/ball_env.xml")
         self.reset()
 
@@ -24,9 +31,18 @@ class BallEnv(MujocoEnv):
         ob = self.get_obs()
         return ob
 
-    def get_reward(self):
+    def get_obs(self):
+        return self.sim.data.qpos[:2].copy()
+
+    def set_action(self, u):
+        self.sim.data.qvel[:2] = u.copy()
+
+    def get_reward(self, obs):
         # return np.linalg.norm(self.ball_pos - self.goal_pos) < 0.05
-        return -np.linalg.norm(self.ball_pos - self.goal_pos)
+        ball_pos = obs[:2]
+        r = -np.linalg.norm(ball_pos - self.goal_pos)
+        # print(r)
+        return r
 
 if __name__ == "__main__":
     b = BallEnv()

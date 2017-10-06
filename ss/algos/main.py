@@ -7,35 +7,66 @@ from baselines.common.misc_util import (
     set_global_seeds,
     boolean_flag,
 )
+
+from ss.envs.ball_env import BallEnv
+
 from ss.algos.trainer import Trainer
-from ss.algos.params import get_params
+from baselines.ddpg.models import Actor, Critic
+from baselines.ddpg.memory import Memory
+from baselines.ddpg.noise import *
+from ss.path import get_expdir
 
 import gym
 import tensorflow as tf
 from mpi4py import MPI
 
-from ss.envs.ball_env import BallEnv
-
 def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
-    params = get_params()
-
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
-    if rank != 0: logger.set_level(logger.DISABLED)
+    if rank != 0:
+        logger.set_level(logger.DISABLED)
+    else:
+        logdir = get_expdir("test_" + time.strftime("%d-%m-%Y_%H-%M-%S") + "/" )
+        logger.configure(logdir, ['stdout', 'log', 'json', 'tensorboard'])
 
     # Create envs.
     env = BallEnv()
-    params["observation_shape"] = env.get_obs_dim()
-    params["action_shape"] = env.get_act_dim()
-    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank), allow_early_resets=True)
+    # env = gym.make(env_id)
+    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank))
     gym.logger.setLevel(logging.WARN)
 
     if evaluation and rank==0:
         eval_env = BallEnv()
-        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'), allow_early_resets=True)
+        # eval_env = gym.make(env_id)
+        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
         env = bench.Monitor(env, None)
     else:
         eval_env = None
+
+    # Parse noise_type
+    action_noise = None
+    param_noise = None
+    nb_actions = env.action_space.shape[-1]
+    for current_noise_type in noise_type.split(','):
+        current_noise_type = current_noise_type.strip()
+        if current_noise_type == 'none':
+            pass
+        elif 'adaptive-param' in current_noise_type:
+            _, stddev = current_noise_type.split('_')
+            param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
+        elif 'normal' in current_noise_type:
+            _, stddev = current_noise_type.split('_')
+            action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+        elif 'ou' in current_noise_type:
+            _, stddev = current_noise_type.split('_')
+            action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+        else:
+            raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
+
+    # Configure components.
+    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
+    critic = Critic(layer_norm=layer_norm)
+    actor = Actor(nb_actions, layer_norm=layer_norm)
 
     # Seed everything to make things reproducible.
     seed = seed + 1000000 * rank
@@ -49,11 +80,10 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
         start_time = time.time()
-
-    params["env"] = env
-    params["eval_env"] = eval_env
-    trainer = Trainer(**params)
-    trainer.train()
+    t = Trainer(env=env, eval_env=eval_env, param_noise=param_noise,
+        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+    t.train(env=env, eval_env=eval_env, param_noise=param_noise,
+        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
     env.close()
     if eval_env is not None:
         eval_env.close()

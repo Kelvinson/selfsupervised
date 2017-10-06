@@ -10,12 +10,14 @@ from mujoco_py.generated import const
 import gym
 import six
 import mujoco_py
+import pdb
 
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip=1, mjviewer=mujoco_py.MjViewer):
+    def __init__(self, model_path, frame_skip=1, mjviewer=mujoco_py.MjViewer, horizon=50):
+        self.horizon = horizon
         self.frame_skip = frame_skip
         self.model = mujoco_py.load_model_from_path(model_path)
         self.sim = mujoco_py.MjSim(self.model)
@@ -31,18 +33,22 @@ class MujocoEnv(gym.Env):
 
         self.init_qpos = self.data.qpos.ravel().copy()
         self.init_qvel = self.data.qvel.ravel().copy()
-        observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
-        assert not done
-        self.obs_dim = observation.size
 
-        bounds = self.model.actuator_ctrlrange.copy()
-        low = bounds[:, 0]
-        high = bounds[:, 1]
-        self.action_space = spaces.Box(low, high)
+        if not hasattr(self, "action_space"):
+            bounds = self.model.actuator_ctrlrange.copy()
+            low = bounds[:, 0]
+            high = bounds[:, 1]
+            self.action_space = spaces.Box(low, high)
 
-        high = np.inf*np.ones(self.obs_dim)
-        low = -high
-        self.observation_space = spaces.Box(low, high)
+        if not hasattr(self, "observation_space"):
+            observation, _reward, done, _info = self._step(np.zeros(self.action_space.shape))
+            assert not done
+            observation = self.get_obs()
+            self.obs_dim = observation.size
+
+            high = np.inf*np.ones(self.obs_dim)
+            low = -high
+            self.observation_space = spaces.Box(low, high)
 
         self._seed()
 
@@ -59,7 +65,7 @@ class MujocoEnv(gym.Env):
             self.sim.data.qvel.flat
         ])
 
-    def get_reward(self):
+    def get_reward(self, obs):
         return 0.0
 
     def set_action(self, u):
@@ -90,8 +96,8 @@ class MujocoEnv(gym.Env):
         self.t += 1
 
         obs = self.get_obs()
-        reward = self.get_reward()
-        done = False
+        reward = self.get_reward(obs)
+        done = self.t >= self.horizon
 
         return obs, reward, done, {"diverged": False}
 

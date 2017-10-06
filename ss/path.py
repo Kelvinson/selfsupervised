@@ -7,3 +7,6 @@ def mkdir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
     return directory
+
+def get_expdir(name):
+    return DATADIR + "experiments/" + name
