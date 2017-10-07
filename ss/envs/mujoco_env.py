@@ -152,9 +152,3 @@ class MujocoEnv(gym.Env):
             self.sim.data.qpos.flat,
             self.sim.data.qvel.flat
         ])
-
-    def get_obs_dim(self):
-        return (self.obs_dim,)
-
-    def get_act_dim(self):
-        return self.action_space.shape

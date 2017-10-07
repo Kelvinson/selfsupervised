@@ -18,7 +18,6 @@ def main(agent_pickle):
             u, q = agent.pi(o)
             u = u.flatten()
             o, r, _, __ = env.step(u)
-            print(r)
             env.render()
 
 if __name__ == "__main__":

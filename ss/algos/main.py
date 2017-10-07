@@ -11,6 +11,8 @@ from baselines.common.misc_util import (
 from ss.envs.ball_env import BallEnv
 
 from ss.algos.trainer import Trainer
+from ss.algos.params import get_params
+
 from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
@@ -19,8 +21,13 @@ from ss.path import get_expdir
 import gym
 import tensorflow as tf
 from mpi4py import MPI
+import numpy as np
 
-def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
+def run():
+    params = get_params()
+    layer_norm = params["layer_norm"]
+    evaluation = True
+
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
@@ -31,6 +38,8 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
 
     # Create envs.
     env = BallEnv()
+    params["observation_shape"] = env.observation_space.shape
+    params["action_shape"] = env.action_space.shape
     # env = gym.make(env_id)
     env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank))
     gym.logger.setLevel(logging.WARN)
@@ -39,7 +48,6 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
         eval_env = BallEnv()
         # eval_env = gym.make(env_id)
         eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
-        env = bench.Monitor(env, None)
     else:
         eval_env = None
 
@@ -47,29 +55,37 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     action_noise = None
     param_noise = None
     nb_actions = env.action_space.shape[-1]
-    for current_noise_type in noise_type.split(','):
-        current_noise_type = current_noise_type.strip()
-        if current_noise_type == 'none':
-            pass
-        elif 'adaptive-param' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
-        elif 'normal' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-        elif 'ou' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-        else:
-            raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
+    # for current_noise_type in noise_type.split(','):
+    #     current_noise_type = current_noise_type.strip()
+    #     if current_noise_type == 'none':
+    #         pass
+    #     elif 'adaptive-param' in current_noise_type:
+    #         _, stddev = current_noise_type.split('_')
+    #         param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
+    #     elif 'normal' in current_noise_type:
+    #         _, stddev = current_noise_type.split('_')
+    #         action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+    #     elif 'ou' in current_noise_type:
+    #         _, stddev = current_noise_type.split('_')
+    #         action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+    #     else:
+    #         raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
     # Configure components.
     memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
     critic = Critic(layer_norm=layer_norm)
     actor = Actor(nb_actions, layer_norm=layer_norm)
+    params["memory"] = memory
+    params["critic"] = critic
+    params["actor"] = actor
+    params["env"] = env
+    params["eval_env"] = eval_env
+    params["action_noise"] = action_noise
+    params["param_noise"] = param_noise
 
     # Seed everything to make things reproducible.
-    seed = seed + 1000000 * rank
+    seed = np.random.randint(0, 1000000)
+    params["seed"] = seed
     logger.info('rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
     tf.reset_default_graph()
     set_global_seeds(seed)
@@ -80,10 +96,8 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
         start_time = time.time()
-    t = Trainer(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
-    t.train(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+    t = Trainer(**params)
+    t.train()
     env.close()
     if eval_env is not None:
         eval_env.close()
@@ -113,13 +127,11 @@ def parse_args():
     parser.add_argument('--nb-epoch-cycles', type=int, default=20)
     parser.add_argument('--nb-train-steps', type=int, default=50)  # per epoch cycle and MPI worker
     parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-rollout-steps', type=int, default=100)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     boolean_flag(parser, 'evaluation', default=False)
     return vars(parser.parse_args())
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    # Run actual script.
-    run(**args)
+    run()

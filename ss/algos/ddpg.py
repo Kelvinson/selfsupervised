@@ -64,7 +64,7 @@ class DDPG(object):
         # critic_l2_reg=0., actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.):
         for k in params:
             setattr(self, k, params[k])
-        self.init_args = deepcopy(params)
+        self.init_args = copy(params)
 
         # Inputs.
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + self.observation_shape, name='obs0')
@@ -367,7 +367,12 @@ class DDPG(object):
         self.sess.run(restore_ops)
 
     def __getstate__(self):
-        return {'tf': self.get_save_tf(), 'init': self.init_args}
+        exclude_vars = set(["env", "eval_env"])
+        args = {}
+        for k in self.init_args:
+            if k not in exclude_vars:
+                args[k] = self.init_args[k]
+        return {'tf': self.get_save_tf(), 'init': args}
 
     def __setstate__(self, state):
         self.__init__(**state['init'])

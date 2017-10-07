@@ -14,27 +14,20 @@ from mpi4py import MPI
 
 class Trainer:
     def __init__(self, **params):
+        self.params = params
         for k in params:
             setattr(self, k, params[k])
 
-    def train(self, env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
-        normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
-        popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-        tau=0.01, eval_env=None, param_noise_adaption_interval=50):
+    def train(self):
         rank = MPI.COMM_WORLD.Get_rank()
+
+        env = self.env
+        eval_env = self.eval_env
 
         assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
         max_action = env.action_space.high
         logger.info('scaling actions by {} before executing in env'.format(max_action))
-        agent = DDPG(actor=actor, critic=critic, memory=memory, observation_shape=env.observation_space.shape, action_shape=env.action_space.shape,
-            gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
-            batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-            actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-            reward_scale=reward_scale, observation_range=(-5., 5.), action_range=(-1., 1.), return_range=(-np.inf, np.inf),
-            stats_sample=None)
-        # gamma=0.99, tau=0.001, normalize_returns=False, enable_popart=False, normalize_observations=True,
-            # adaptive_param_noise=True, adaptive_param_noise_policy_threshold=.1,
-            # critic_l2_reg=0., actor_lr=1e-4, critic_lr=1e-3,
+        agent = DDPG(**self.params)
         logger.info('Using agent with the following configuration:')
         logger.info(str(agent.__dict__.items()))
 
@@ -74,21 +67,21 @@ class Trainer:
             epoch_actions = []
             epoch_qs = []
             epoch_episodes = 0
-            for epoch in range(nb_epochs):
-                for cycle in range(nb_epoch_cycles):
+            for epoch in range(self.nb_epochs):
+                for cycle in range(self.nb_epoch_cycles):
                     # Perform rollouts.
-                    for t_rollout in range(nb_rollout_steps):
+                    for t_rollout in range(self.nb_rollout_steps):
                         # Predict next action.
                         action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                         assert action.shape == env.action_space.shape
 
                         # Execute next action.
-                        if rank == 0 and render:
+                        if rank == 0 and self.render:
                             env.render()
                         assert max_action.shape == action.shape
                         new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                         t += 1
-                        if rank == 0 and render:
+                        if rank == 0 and self.render:
                             env.render()
                         episode_reward += r
                         episode_step += 1
@@ -116,12 +109,7 @@ class Trainer:
                     epoch_actor_losses = []
                     epoch_critic_losses = []
                     epoch_adaptive_distances = []
-                    for t_train in range(nb_train_steps):
-                        # Adapt param noise, if necessary.
-                        if memory.nb_entries >= batch_size and t % param_noise_adaption_interval == 0:
-                            distance = agent.adapt_param_noise()
-                            epoch_adaptive_distances.append(distance)
-
+                    for t_train in range(self.nb_train_steps):
                         cl, al = agent.train()
                         epoch_critic_losses.append(cl)
                         epoch_actor_losses.append(al)
@@ -132,10 +120,10 @@ class Trainer:
                     eval_qs = []
                     if eval_env is not None:
                         eval_episode_reward = 0.
-                        for t_rollout in range(nb_eval_steps):
+                        for t_rollout in range(self.nb_eval_steps):
                             eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
                             eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                            if render_eval:
+                            if self.render_eval:
                                 eval_env.render()
                             eval_episode_reward += eval_r
 
