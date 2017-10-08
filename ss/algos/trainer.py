@@ -12,6 +12,8 @@ import numpy as np
 import tensorflow as tf
 from mpi4py import MPI
 
+import pdb
+
 class Trainer:
     def __init__(self, **params):
         self.params = params
@@ -22,7 +24,6 @@ class Trainer:
         rank = MPI.COMM_WORLD.Get_rank()
 
         env = self.env
-        eval_env = self.eval_env
 
         assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
         max_action = env.action_space.high
@@ -39,7 +40,6 @@ class Trainer:
 
         step = 0
         episode = 0
-        eval_episode_rewards_history = deque(maxlen=100)
         episode_rewards_history = deque(maxlen=100)
         with U.single_threaded_session() as sess:
             # Prepare everything.
@@ -48,8 +48,6 @@ class Trainer:
 
             agent.reset()
             obs = env.reset()
-            if eval_env is not None:
-                eval_obs = eval_env.reset()
             done = False
             episode_reward = 0.
             episode_step = 0
@@ -61,8 +59,6 @@ class Trainer:
 
             epoch_episode_rewards = []
             epoch_episode_steps = []
-            epoch_episode_eval_rewards = []
-            epoch_episode_eval_steps = []
             epoch_start_time = time.time()
             epoch_actions = []
             epoch_qs = []
@@ -70,7 +66,7 @@ class Trainer:
             for epoch in range(self.nb_epochs):
                 for cycle in range(self.nb_epoch_cycles):
                     # Perform rollouts.
-                    for t_rollout in range(self.nb_rollout_steps):
+                    for t_rollout in range(self.horizon):
                         # Predict next action.
                         action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                         assert action.shape == env.action_space.shape
@@ -92,18 +88,16 @@ class Trainer:
                         agent.store_transition(obs, action, r, new_obs, done)
                         obs = new_obs
 
-                        if done:
-                            # Episode done.
-                            epoch_episode_rewards.append(episode_reward)
-                            episode_rewards_history.append(episode_reward)
-                            epoch_episode_steps.append(episode_step)
-                            episode_reward = 0.
-                            episode_step = 0
-                            epoch_episodes += 1
-                            episodes += 1
+                    epoch_episode_rewards.append(episode_reward)
+                    episode_rewards_history.append(episode_reward)
+                    epoch_episode_steps.append(episode_step)
+                    episode_reward = 0.
+                    episode_step = 0
+                    epoch_episodes += 1
+                    episodes += 1
 
-                            agent.reset()
-                            obs = env.reset()
+                    agent.reset()
+                    obs = env.reset()
 
                     # Train.
                     epoch_actor_losses = []
@@ -114,25 +108,6 @@ class Trainer:
                         epoch_critic_losses.append(cl)
                         epoch_actor_losses.append(al)
                         agent.update_target_net()
-
-                    # Evaluate.
-                    eval_episode_rewards = []
-                    eval_qs = []
-                    if eval_env is not None:
-                        eval_episode_reward = 0.
-                        for t_rollout in range(self.nb_eval_steps):
-                            eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
-                            eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                            if self.render_eval:
-                                eval_env.render()
-                            eval_episode_reward += eval_r
-
-                            eval_qs.append(eval_q)
-                            if eval_done:
-                                eval_obs = eval_env.reset()
-                                eval_episode_rewards.append(eval_episode_reward)
-                                eval_episode_rewards_history.append(eval_episode_reward)
-                                eval_episode_reward = 0.
 
                 # Log stats.
                 epoch_train_duration = time.time() - epoch_start_time
@@ -156,13 +131,6 @@ class Trainer:
                 combined_stats['train/loss_critic'] = mpi_mean(epoch_critic_losses)
                 combined_stats['train/param_noise_distance'] = mpi_mean(epoch_adaptive_distances)
 
-                # Evaluation statistics.
-                if eval_env is not None:
-                    combined_stats['eval/return'] = mpi_mean(eval_episode_rewards)
-                    combined_stats['eval/return_history'] = mpi_mean(np.mean(eval_episode_rewards_history))
-                    combined_stats['eval/Q'] = mpi_mean(eval_qs)
-                    combined_stats['eval/episodes'] = mpi_mean(len(eval_episode_rewards))
-
                 # Total statistics.
                 combined_stats['total/duration'] = mpi_mean(duration)
                 combined_stats['total/steps_per_second'] = mpi_mean(float(t) / float(duration))
@@ -179,9 +147,6 @@ class Trainer:
                     if hasattr(env, 'get_state'):
                         with open(os.path.join(logdir, 'env_state.pkl'), 'wb') as f:
                             pickle.dump(env.get_state(), f)
-                    if eval_env and hasattr(eval_env, 'get_state'):
-                        with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
-                            pickle.dump(eval_env.get_state(), f)
 
                     if epoch % 100 == 0:
                         # saver.save(sess, logdir + 'models/model', global_step=epoch)

@@ -40,7 +40,7 @@ def array_min2d(x):
     return x.reshape(-1, 1)
 
 class ReplayBuffer(object):
-    def __init__(self, limit, action_shape, observation_shape, goal_shape=None):
+    def __init__(self, limit, action_shape, observation_shape):
         self.limit = limit
 
         self.observations0 = RingBuffer(limit, shape=observation_shape)
@@ -79,17 +79,29 @@ class ReplayBuffer(object):
         return len(self.observations0)
 
 class HERBuffer(ReplayBuffer):
-    def __init__(self, limit, action_shape, observation_shape, goal_shape):
+    def __init__(self, limit, action_shape, observation_shape, obs_to_goal, goal_slice):
+        """Replay buffer that does Hindsight Experience Replay
+        obs_to_goal is a function that converts observations to goals
+        goal_slice is a slice of indices of goal in observation
+        """
         ReplayBuffer.__init__(self, limit, action_shape, observation_shape, goal_shape)
 
-        self.data = []
+        self.obs_to_goal = obs_to_goal
+        self.goal_slice = goal_slice
+        self.data = [] # stores current episode
 
-    def flush(self, goals):
-        """Dump the current data into the replay buffer with associated goals"""
-        for g in goals:
-            for obs0, action, reward, obs1 in data:
-                obsg = np.concatenate((obs0, g), axis=-1)
-                super().append(obsg, action, reward, obs1)
+    def flush(self):
+        """Dump the current data into the replay buffer with (final) HER"""
+        for obs0, action, reward, obs1 in data:
+            obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
+            super().append(obs0, action, reward, obs1)
+        final_obs = self.data[-1][-1]
+        her_goal = self.obs_to_goal(final_obs)
+        for obs0, action, reward, obs1 in data:
+            obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
+            obs0[self.goal_slice] = her_goal
+            obs1[self.goal_slice] = her_goal
+            super().append(obs0, action, reward, obs1)
         self.data = []
 
     def append(self, obs0, action, reward, obs1, training=True):

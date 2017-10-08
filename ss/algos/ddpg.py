@@ -11,60 +11,14 @@ import baselines.common.tf_util as U
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from baselines.ddpg.util import reduce_std, mpi_mean
 
-from baselines.ddpg.models import Actor, Critic
+from ss.algos.models import Actor, Critic
 from baselines.ddpg.memory import Memory
+from ss.algos.replay_buffer import ReplayBuffer, HERBuffer
 
 import pdb
 
-def normalize(x, stats):
-    if stats is None:
-        return x
-    return (x - stats.mean) / stats.std
-
-
-def denormalize(x, stats):
-    if stats is None:
-        return x
-    return x * stats.std + stats.mean
-
-
-def get_target_updates(vars, target_vars, tau):
-    logger.info('setting up target updates ...')
-    soft_updates = []
-    init_updates = []
-    assert len(vars) == len(target_vars)
-    for var, target_var in zip(vars, target_vars):
-        logger.info('  {} <- {}'.format(target_var.name, var.name))
-        init_updates.append(tf.assign(target_var, var))
-        soft_updates.append(tf.assign(target_var, (1. - tau) * target_var + tau * var))
-    assert len(init_updates) == len(vars)
-    assert len(soft_updates) == len(vars)
-    return tf.group(*init_updates), tf.group(*soft_updates)
-
-
-def get_perturbed_actor_updates(actor, perturbed_actor, param_noise_stddev):
-    assert len(actor.vars) == len(perturbed_actor.vars)
-    assert len(actor.perturbable_vars) == len(perturbed_actor.perturbable_vars)
-
-    updates = []
-    for var, perturbed_var in zip(actor.vars, perturbed_actor.vars):
-        if var in actor.perturbable_vars:
-            logger.info('  {} <- {} + noise'.format(perturbed_var.name, var.name))
-            updates.append(tf.assign(perturbed_var, var + tf.random_normal(tf.shape(var), mean=0., stddev=param_noise_stddev)))
-        else:
-            logger.info('  {} <- {}'.format(perturbed_var.name, var.name))
-            updates.append(tf.assign(perturbed_var, var))
-    assert len(updates) == len(actor.vars)
-    return tf.group(*updates)
-
-
 class DDPG(object):
     def __init__(self, **params):
-        # actor, critic, memory, observation_shape, action_shape, param_noise=None, action_noise=None,
-        # gamma=0.99, tau=0.001, normalize_returns=False, enable_popart=False, normalize_observations=True,
-        # batch_size=128, observation_range=(-5., 5.), action_range=(-1., 1.), return_range=(-np.inf, np.inf),
-        # adaptive_param_noise=True, adaptive_param_noise_policy_threshold=.1,
-        # critic_l2_reg=0., actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.):
         for k in params:
             setattr(self, k, params[k])
         self.init_args = copy(params)
@@ -374,7 +328,7 @@ class DDPG(object):
         self.sess.run(restore_ops)
 
     def __getstate__(self):
-        exclude_vars = set(["env", "eval_env"])
+        exclude_vars = set(["env"])
         args = {}
         for k in self.init_args:
             if k not in exclude_vars:
@@ -389,3 +343,41 @@ class DDPG(object):
         self.restore_tf(state['tf'])
         self.actor_optimizer.sync()
         self.critic_optimizer.sync()
+
+def normalize(x, stats):
+    if stats is None:
+        return x
+    return (x - stats.mean) / stats.std
+
+def denormalize(x, stats):
+    if stats is None:
+        return x
+    return x * stats.std + stats.mean
+
+def get_target_updates(vars, target_vars, tau):
+    logger.info('setting up target updates ...')
+    soft_updates = []
+    init_updates = []
+    assert len(vars) == len(target_vars)
+    for var, target_var in zip(vars, target_vars):
+        logger.info('  {} <- {}'.format(target_var.name, var.name))
+        init_updates.append(tf.assign(target_var, var))
+        soft_updates.append(tf.assign(target_var, (1. - tau) * target_var + tau * var))
+    assert len(init_updates) == len(vars)
+    assert len(soft_updates) == len(vars)
+    return tf.group(*init_updates), tf.group(*soft_updates)
+
+def get_perturbed_actor_updates(actor, perturbed_actor, param_noise_stddev):
+    assert len(actor.vars) == len(perturbed_actor.vars)
+    assert len(actor.perturbable_vars) == len(perturbed_actor.perturbable_vars)
+
+    updates = []
+    for var, perturbed_var in zip(actor.vars, perturbed_actor.vars):
+        if var in actor.perturbable_vars:
+            logger.info('  {} <- {} + noise'.format(perturbed_var.name, var.name))
+            updates.append(tf.assign(perturbed_var, var + tf.random_normal(tf.shape(var), mean=0., stddev=param_noise_stddev)))
+        else:
+            logger.info('  {} <- {}'.format(perturbed_var.name, var.name))
+            updates.append(tf.assign(perturbed_var, var))
+    assert len(updates) == len(actor.vars)
+    return tf.group(*updates)

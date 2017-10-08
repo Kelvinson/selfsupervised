@@ -16,8 +16,7 @@ class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip=1, mjviewer=mujoco_py.MjViewer, horizon=50):
-        self.horizon = horizon
+    def __init__(self, model_path, frame_skip=1, mjviewer=mujoco_py.MjViewer):
         self.frame_skip = frame_skip
         self.model = mujoco_py.load_model_from_path(model_path)
         self.sim = mujoco_py.MjSim(self.model)
@@ -97,7 +96,7 @@ class MujocoEnv(gym.Env):
 
         obs = self.get_obs()
         reward = self.get_reward(obs)
-        done = self.t >= self.horizon
+        done = False
 
         return obs, reward, done, {"diverged": False}
 

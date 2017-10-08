@@ -20,35 +20,33 @@ import gym
 import tensorflow as tf
 from mpi4py import MPI
 import numpy as np
+import click
 
-def run():
+@click.command()
+@click.option('--expname', default=None)
+def run(expname):
     params = get_params()
-    horizon = params["horizon"]
     layer_norm = params["layer_norm"]
     evaluation = True
+
+    if not expname:
+        expname = "test_" + time.strftime("%d-%m-%Y_%H-%M-%S")
 
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
         logger.set_level(logger.DISABLED)
     else:
-        logdir = get_expdir("test_" + time.strftime("%d-%m-%Y_%H-%M-%S") + "/" )
+        logdir = get_expdir(expname + "/" )
         logger.configure(logdir, ['stdout', 'log', 'json', 'tensorboard'])
 
     # Create envs.
-    env = BallEnv(horizon)
+    env = BallEnv()
     params["observation_shape"] = env.observation_space.shape
     params["action_shape"] = env.action_space.shape
     # env = gym.make(env_id)
-    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank))
+    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank), allow_early_resets=True)
     gym.logger.setLevel(logging.WARN)
-
-    if evaluation and rank==0:
-        eval_env = BallEnv(horizon)
-        # eval_env = gym.make(env_id)
-        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
-    else:
-        eval_env = None
 
     # Parse noise_type
     action_noise = None
@@ -72,7 +70,6 @@ def run():
 
     # Configure components.
     params["env"] = env
-    params["eval_env"] = eval_env
     params["action_noise"] = action_noise
     params["param_noise"] = param_noise
 
@@ -83,8 +80,6 @@ def run():
     tf.reset_default_graph()
     set_global_seeds(seed)
     env.seed(seed)
-    if eval_env is not None:
-        eval_env.seed(seed)
 
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
