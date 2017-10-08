@@ -13,8 +13,6 @@ from ss.envs.ball_env import BallEnv
 from ss.algos.trainer import Trainer
 from ss.algos.params import get_params
 
-from baselines.ddpg.models import Actor, Critic
-from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
 from ss.path import get_expdir
 
@@ -25,6 +23,7 @@ import numpy as np
 
 def run():
     params = get_params()
+    horizon = params["horizon"]
     layer_norm = params["layer_norm"]
     evaluation = True
 
@@ -37,7 +36,7 @@ def run():
         logger.configure(logdir, ['stdout', 'log', 'json', 'tensorboard'])
 
     # Create envs.
-    env = BallEnv()
+    env = BallEnv(horizon)
     params["observation_shape"] = env.observation_space.shape
     params["action_shape"] = env.action_space.shape
     # env = gym.make(env_id)
@@ -45,7 +44,7 @@ def run():
     gym.logger.setLevel(logging.WARN)
 
     if evaluation and rank==0:
-        eval_env = BallEnv()
+        eval_env = BallEnv(horizon)
         # eval_env = gym.make(env_id)
         eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
     else:
@@ -72,12 +71,6 @@ def run():
     #         raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
     # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
-    critic = Critic(layer_norm=layer_norm)
-    actor = Actor(nb_actions, layer_norm=layer_norm)
-    params["memory"] = memory
-    params["critic"] = critic
-    params["actor"] = actor
     params["env"] = env
     params["eval_env"] = eval_env
     params["action_noise"] = action_noise
@@ -103,35 +96,6 @@ def run():
         eval_env.close()
     if rank == 0:
         logger.info('total runtime: {}s'.format(time.time() - start_time))
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument('--env-id', type=str, default='HalfCheetah-v1')
-    boolean_flag(parser, 'render-eval', default=False)
-    boolean_flag(parser, 'layer-norm', default=True)
-    boolean_flag(parser, 'render', default=False)
-    boolean_flag(parser, 'normalize-returns', default=False)
-    boolean_flag(parser, 'normalize-observations', default=True)
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-    parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
-    parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
-    boolean_flag(parser, 'popart', default=False)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--reward-scale', type=float, default=1.)
-    parser.add_argument('--clip-norm', type=float, default=None)
-    parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
-    parser.add_argument('--nb-epoch-cycles', type=int, default=20)
-    parser.add_argument('--nb-train-steps', type=int, default=50)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker
-    parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
-    boolean_flag(parser, 'evaluation', default=False)
-    return vars(parser.parse_args())
-
 
 if __name__ == '__main__':
     run()

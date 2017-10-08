@@ -11,6 +11,9 @@ import baselines.common.tf_util as U
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from baselines.ddpg.util import reduce_std, mpi_mean
 
+from baselines.ddpg.models import Actor, Critic
+from baselines.ddpg.memory import Memory
+
 import pdb
 
 def normalize(x, stats):
@@ -65,6 +68,10 @@ class DDPG(object):
         for k in params:
             setattr(self, k, params[k])
         self.init_args = copy(params)
+
+        self.memory = Memory(limit=int(self.buffer_size), action_shape=self.action_shape, observation_shape=self.observation_shape)
+        self.critic = Critic(layer_norm=self.layer_norm)
+        self.actor = Actor(self.action_shape[-1], layer_norm=self.layer_norm)
 
         # Inputs.
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + self.observation_shape, name='obs0')

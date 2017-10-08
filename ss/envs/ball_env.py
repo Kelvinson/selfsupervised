@@ -7,7 +7,7 @@ from mujoco_py.generated import const
 import scipy.misc
 
 class BallEnv(MujocoEnv):
-    def __init__(self):
+    def __init__(self, horizon=20):
         self.ball_pos = np.zeros((2))
         self.goal_pos = np.zeros((2))
 
@@ -17,7 +17,7 @@ class BallEnv(MujocoEnv):
         o_range = np.ones((2))
         self.observation_space = spaces.Box(-o_range, o_range)
 
-        MujocoEnv.__init__(self, "models/ball_env.xml")
+        MujocoEnv.__init__(self, "models/ball_env.xml", horizon)
         self.reset()
 
     def reset(self):

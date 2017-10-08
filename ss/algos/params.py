@@ -18,8 +18,8 @@ def get_params(overrides={}):
     params["nb_epochs"] = 500  # with default settings, perform 1M steps total
     params["nb_epoch_cycles"] = 20
     params["nb_train_steps"] = 50  # per epoch cycle and MPI worker
-    params["nb_eval_steps"] = 100  # per epoch cycle and MPI worker
-    params["nb_rollout_steps"] = 100  # per epoch cycle and MPI worker
+    params["nb_eval_steps"] = 20  # per epoch cycle and MPI worker
+    params["nb_rollout_steps"] = 20  # per epoch cycle and MPI worker
     params["render_eval"] = False
     params["render"] = False
     params["her"] = False
@@ -34,6 +34,7 @@ def get_params(overrides={}):
     params["normalize_observations"] = True
     params["popart"] = False
     params["clip_norm"] = None
+    params["buffer_size"] = 1e6
 
     # parser.add_argument('--env-id', type=str, default='HalfCheetah-v1')
     # boolean_flag(parser, 'render-eval', default=False)
