@@ -15,6 +15,8 @@ from ss.algos.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from ss.algos.replay_buffer import ReplayBuffer, HERBuffer
 
+from baselines.ddpg.noise import *
+
 import pdb
 
 class DDPG(object):
@@ -23,14 +25,29 @@ class DDPG(object):
             setattr(self, k, params[k])
         self.init_args = copy(params)
 
-        self.memory = Memory(limit=int(self.buffer_size), action_shape=self.action_shape, observation_shape=self.observation_shape)
+        if self.her:
+            # self.obs_to_goal = None
+            # self.goal_idx = None
+            # self.reward_fn = None
+            self.memory = HERBuffer(limit=int(self.buffer_size),
+                action_shape=self.action_shape,
+                observation_shape=self.observation_shape,
+                obs_to_goal=self.obs_to_goal,
+                goal_slice=self.goal_idx,
+                reward_fn=self.reward_fn)
+        else:
+            self.memory = Memory(limit=int(self.buffer_size), action_shape=self.action_shape, observation_shape=self.observation_shape)
+
         self.critic = Critic(layer_norm=self.layer_norm)
         self.actor = Actor(self.action_shape[-1], layer_norm=self.layer_norm)
+
+        self.action_noise = NormalActionNoise(mu=np.zeros(self.action_shape), sigma=float(self.noise_sigma) * np.ones(self.action_shape))
+        self.param_noise = None
 
         # Inputs.
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + self.observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + self.observation_shape, name='obs1')
-        self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
+        # self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
         self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
         self.actions = tf.placeholder(tf.float32, shape=(None,) + self.action_shape, name='actions')
         self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
@@ -69,7 +86,8 @@ class DDPG(object):
         self.normalized_critic_with_actor_tf = self.critic(normalized_obs0, self.actor_tf, reuse=True)
         self.critic_with_actor_tf = denormalize(tf.clip_by_value(self.normalized_critic_with_actor_tf, self.return_range[0], self.return_range[1]), self.ret_rms)
         Q_obs1 = denormalize(target_critic(normalized_obs1, target_actor(normalized_obs1)), self.ret_rms)
-        self.target_Q = self.rewards + (1. - self.terminals1) * self.gamma * Q_obs1
+        # self.target_Q = self.rewards + (1. - self.terminals1) * self.gamma * Q_obs1
+        self.target_Q = self.rewards + self.gamma * Q_obs1
 
         # Set up parts.
         if self.param_noise is not None:
@@ -86,23 +104,6 @@ class DDPG(object):
         critic_init_updates, critic_soft_updates = get_target_updates(self.critic.vars, self.target_critic.vars, self.tau)
         self.target_init_updates = [actor_init_updates, critic_init_updates]
         self.target_soft_updates = [actor_soft_updates, critic_soft_updates]
-
-    def setup_param_noise(self, normalized_obs0):
-        assert self.param_noise is not None
-
-        # Configure perturbed actor.
-        param_noise_actor = copy(self.actor)
-        param_noise_actor.name = 'param_noise_actor'
-        self.perturbed_actor_tf = param_noise_actor(normalized_obs0)
-        logger.info('setting up param noise')
-        self.perturb_policy_ops = get_perturbed_actor_updates(self.actor, param_noise_actor, self.param_noise_stddev)
-
-        # Configure separate copy for stddev adoption.
-        adaptive_param_noise_actor = copy(self.actor)
-        adaptive_param_noise_actor.name = 'adaptive_param_noise_actor'
-        adaptive_actor_tf = adaptive_param_noise_actor(normalized_obs0)
-        self.perturb_adaptive_policy_ops = get_perturbed_actor_updates(self.actor, adaptive_param_noise_actor, self.param_noise_stddev)
-        self.adaptive_policy_distance = tf.sqrt(tf.reduce_mean(tf.square(self.actor_tf - adaptive_actor_tf)))
 
     def setup_actor_optimizer(self):
         logger.info('setting up actor optimizer')
@@ -224,7 +225,7 @@ class DDPG(object):
             old_mean, old_std, target_Q = self.sess.run([self.ret_rms.mean, self.ret_rms.std, self.target_Q], feed_dict={
                 self.obs1: batch['obs1'],
                 self.rewards: batch['rewards'],
-                self.terminals1: batch['terminals1'].astype('float32'),
+                # self.terminals1: batch['terminals1'].astype('float32'),
             })
             self.ret_rms.update(target_Q.flatten())
             self.sess.run(self.renormalize_Q_outputs_op, feed_dict={
@@ -245,7 +246,7 @@ class DDPG(object):
             target_Q = self.sess.run(self.target_Q, feed_dict={
                 self.obs1: batch['obs1'],
                 self.rewards: batch['rewards'],
-                self.terminals1: batch['terminals1'].astype('float32'),
+                # self.terminals1: batch['terminals1'].astype('float32'),
             })
 
         # Get all gradients and perform a synced update.
@@ -315,6 +316,11 @@ class DDPG(object):
             self.sess.run(self.perturb_policy_ops, feed_dict={
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
+        self.flush()
+
+    def flush(self):
+        if self.her:
+            self.memory.flush()
 
     def get_save_tf(self):
         all_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)

@@ -110,11 +110,11 @@ class MujocoEnv(gym.Env):
             self.sim.step()
 
     def _render(self, mode='human', close=False):
-        # if close:
-        #     if self.viewer is not None:
-        #         self._get_viewer().finish()
-        #         self.viewer = None
-        #     return
+        if close:
+            if self.viewer is not None:
+                self._get_viewer().finish()
+                self.viewer = None
+            return
         self._get_viewer().render()
         # if mode == 'rgb_array':
         #     # self._get_viewer().render()

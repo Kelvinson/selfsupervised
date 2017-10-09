@@ -3,14 +3,14 @@
 import collections
 import numpy as np
 
-def get_params(overrides={}):
+def get_params(**kwargs):
     params = collections.OrderedDict()
     params["gamma"] = 0.95
     params["tau"] = 1.0
     params["batch_size"] = 128
     params["observation_range"] = (-5., 5.)
     params["action_range"] = (-1., 1.)
-    params["return_range"] = (-np.inf, np.inf)
+    params["return_range"] = (-20.0, 0.0)
     params["critic_l2_reg"] = 0 # 1e-2
     params["actor_lr"] = 1e-3
     params["critic_lr"] = 1e-3
@@ -22,7 +22,7 @@ def get_params(overrides={}):
     params["her"] = False
     params["buffer_size"] = 1000000
     params["noise_mu"] = 0.0
-    params["noise_sigma"] = 1.0
+    params["noise_sigma"] = 0.1
     params["reward_scale"] = 1.0
     params["horizon"] = 20
     params["stats_sample"] = None
@@ -32,8 +32,9 @@ def get_params(overrides={}):
     params["popart"] = False
     params["clip_norm"] = None
     params["buffer_size"] = 1e6
+    params["her"] = False
 
-    for key in overrides:
-        params[key] = overrides[key]
+    for key in kwargs:
+        params[key] = kwargs[key]
 
     return params

@@ -65,7 +65,7 @@ class ReplayBuffer(object):
         }
         return result
 
-    def append(self, obs0, action, reward, obs1, training=True):
+    def append(self, obs0, action, reward, obs1, _, training=True):
         if not training:
             return
 
@@ -79,32 +79,37 @@ class ReplayBuffer(object):
         return len(self.observations0)
 
 class HERBuffer(ReplayBuffer):
-    def __init__(self, limit, action_shape, observation_shape, obs_to_goal, goal_slice):
+    def __init__(self, limit, action_shape, observation_shape, obs_to_goal, goal_slice, reward_fn):
         """Replay buffer that does Hindsight Experience Replay
         obs_to_goal is a function that converts observations to goals
         goal_slice is a slice of indices of goal in observation
         """
-        ReplayBuffer.__init__(self, limit, action_shape, observation_shape, goal_shape)
+        ReplayBuffer.__init__(self, limit, action_shape, observation_shape)
 
         self.obs_to_goal = obs_to_goal
         self.goal_slice = goal_slice
+        self.reward_fn = reward_fn
         self.data = [] # stores current episode
 
     def flush(self):
         """Dump the current data into the replay buffer with (final) HER"""
-        for obs0, action, reward, obs1 in data:
+        if not self.data:
+            return
+
+        for obs0, action, reward, obs1 in self.data:
             obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
-            super().append(obs0, action, reward, obs1)
+            super().append(obs0, action, reward, obs1, None)
         final_obs = self.data[-1][-1]
         her_goal = self.obs_to_goal(final_obs)
-        for obs0, action, reward, obs1 in data:
+        for obs0, action, reward, obs1 in self.data:
             obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
             obs0[self.goal_slice] = her_goal
             obs1[self.goal_slice] = her_goal
-            super().append(obs0, action, reward, obs1)
+            reward =self.reward_fn(obs1)
+            super().append(obs0, action, reward, obs1, None)
         self.data = []
 
-    def append(self, obs0, action, reward, obs1, training=True):
+    def append(self, obs0, action, reward, obs1, _, training=True):
         if not training:
             return
 

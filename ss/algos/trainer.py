@@ -40,7 +40,6 @@ class Trainer:
 
         step = 0
         episode = 0
-        episode_rewards_history = deque(maxlen=100)
         with U.single_threaded_session() as sess:
             # Prepare everything.
             agent.initialize(sess)
@@ -57,13 +56,18 @@ class Trainer:
             epoch = 0
             start_time = time.time()
 
-            epoch_episode_rewards = []
+
             epoch_episode_steps = []
             epoch_start_time = time.time()
-            epoch_actions = []
-            epoch_qs = []
             epoch_episodes = 0
             for epoch in range(self.nb_epochs):
+                epoch_episode_rewards = []
+                epoch_episode_success = []
+                epoch_actions = []
+                epoch_qs = []
+                epoch_actor_losses = []
+                epoch_critic_losses = []
+
                 for cycle in range(self.nb_epoch_cycles):
                     # Perform rollouts.
                     for t_rollout in range(self.horizon):
@@ -89,7 +93,7 @@ class Trainer:
                         obs = new_obs
 
                     epoch_episode_rewards.append(episode_reward)
-                    episode_rewards_history.append(episode_reward)
+                    epoch_episode_success.append(r + 1)
                     epoch_episode_steps.append(episode_step)
                     episode_reward = 0.
                     episode_step = 0
@@ -100,14 +104,11 @@ class Trainer:
                     obs = env.reset()
 
                     # Train.
-                    epoch_actor_losses = []
-                    epoch_critic_losses = []
-                    epoch_adaptive_distances = []
                     for t_train in range(self.nb_train_steps):
                         cl, al = agent.train()
                         epoch_critic_losses.append(cl)
                         epoch_actor_losses.append(al)
-                        agent.update_target_net()
+                agent.update_target_net()
 
                 # Log stats.
                 epoch_train_duration = time.time() - epoch_start_time
@@ -119,7 +120,7 @@ class Trainer:
 
                 # Rollout statistics.
                 combined_stats['rollout/return'] = mpi_mean(epoch_episode_rewards)
-                combined_stats['rollout/return_history'] = mpi_mean(np.mean(episode_rewards_history))
+                combined_stats['rollout/success'] = mpi_mean(epoch_episode_success)
                 combined_stats['rollout/episode_steps'] = mpi_mean(epoch_episode_steps)
                 combined_stats['rollout/episodes'] = mpi_sum(epoch_episodes)
                 combined_stats['rollout/actions_mean'] = mpi_mean(epoch_actions)
@@ -129,7 +130,6 @@ class Trainer:
                 # Train statistics.
                 combined_stats['train/loss_actor'] = mpi_mean(epoch_actor_losses)
                 combined_stats['train/loss_critic'] = mpi_mean(epoch_critic_losses)
-                combined_stats['train/param_noise_distance'] = mpi_mean(epoch_adaptive_distances)
 
                 # Total statistics.
                 combined_stats['total/duration'] = mpi_mean(duration)

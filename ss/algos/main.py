@@ -8,7 +8,7 @@ from baselines.common.misc_util import (
     boolean_flag,
 )
 
-from ss.envs.ball_env import BallEnv
+from ss.envs.ball_env import BallEnv, obs_to_goal
 
 from ss.algos.trainer import Trainer
 from ss.algos.params import get_params
@@ -24,8 +24,11 @@ import click
 
 @click.command()
 @click.option('--expname', default=None)
-def run(expname):
-    params = get_params()
+def cmdrun(expname, **kwargs):
+    run(expname, **kwargs)
+
+def run(expname=None, **kwargs):
+    params = get_params(her=True, **kwargs)
     layer_norm = params["layer_norm"]
     evaluation = True
 
@@ -44,34 +47,16 @@ def run(expname):
     env = BallEnv()
     params["observation_shape"] = env.observation_space.shape
     params["action_shape"] = env.action_space.shape
+    params["obs_to_goal"] = env.obs_to_goal
+    params["goal_idx"] = env.goal_idx
+    params["reward_fn"] = env.reward_fn
+
     # env = gym.make(env_id)
     env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank), allow_early_resets=True)
     gym.logger.setLevel(logging.WARN)
 
-    # Parse noise_type
-    action_noise = None
-    param_noise = None
-    nb_actions = env.action_space.shape[-1]
-    # for current_noise_type in noise_type.split(','):
-    #     current_noise_type = current_noise_type.strip()
-    #     if current_noise_type == 'none':
-    #         pass
-    #     elif 'adaptive-param' in current_noise_type:
-    #         _, stddev = current_noise_type.split('_')
-    #         param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
-    #     elif 'normal' in current_noise_type:
-    #         _, stddev = current_noise_type.split('_')
-    #         action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-    #     elif 'ou' in current_noise_type:
-    #         _, stddev = current_noise_type.split('_')
-    #         action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-    #     else:
-    #         raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
-
     # Configure components.
     params["env"] = env
-    params["action_noise"] = action_noise
-    params["param_noise"] = param_noise
 
     # Seed everything to make things reproducible.
     seed = np.random.randint(0, 1000000)
@@ -93,4 +78,4 @@ def run(expname):
         logger.info('total runtime: {}s'.format(time.time() - start_time))
 
 if __name__ == '__main__':
-    run()
+    cmdrun()
