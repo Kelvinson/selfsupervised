@@ -5,6 +5,7 @@ import numpy as np
 
 def get_params(**kwargs):
     params = collections.OrderedDict()
+    params["expname"] = None
     params["gamma"] = 0.95
     params["tau"] = 1.0
     params["batch_size"] = 128

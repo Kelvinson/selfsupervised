@@ -1,3 +1,5 @@
+"""Handles running experiments"""
+
 import argparse
 import time
 import os
@@ -21,17 +23,38 @@ import tensorflow as tf
 from mpi4py import MPI
 import numpy as np
 import click
+import pdb
 
-@click.command()
-@click.option('--expname', default=None)
-def cmdrun(expname, **kwargs):
-    run(expname, **kwargs)
+from multiprocessing import Process, Pool
 
-def run(expname=None, **kwargs):
+@click.command(context_settings=dict(
+    ignore_unknown_options=True,
+))
+@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+def cmdrun(args):
+    """Hacky command line parsing to pass through all parameters to override"""
+    kwargs = {}
+    for k, v in zip(args[::2], args[1::2]):
+        kwargs[k] = eval(v)
     params = get_params(her=True, **kwargs)
-    layer_norm = params["layer_norm"]
-    evaluation = True
+    run_parallel([params])
 
+def run_parallel(paramlist, parallel=0):
+    """Runs one experiment per experiment in paramlist.
+    parallel is the number of experiments to run in parallel at once.
+    parallel < 1 means run everything in parallel.
+    """
+    if len(paramlist) == 1:
+        params = paramlist[0]
+        run(params) # no need for any new processes
+    elif len(paramlist) > 0:
+        if parallel < 1:
+            parallel = len(paramlist)
+        pool = Pool(processes=parallel)
+        pool.map(run, paramlist)
+
+def run(params):
+    expname = params["expname"]
     if not expname:
         expname = "test_" + time.strftime("%d-%m-%Y_%H-%M-%S")
 
@@ -72,8 +95,6 @@ def run(expname=None, **kwargs):
     t = Trainer(**params)
     t.train()
     env.close()
-    if eval_env is not None:
-        eval_env.close()
     if rank == 0:
         logger.info('total runtime: {}s'.format(time.time() - start_time))
 

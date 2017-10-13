@@ -1,3 +1,5 @@
+"""Implements the DDPG training loop"""
+
 import os
 import time
 from collections import deque
