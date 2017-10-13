@@ -10,15 +10,22 @@ import machine
 from multiprocessing import Process, Pool
 
 m = machine.Machine(path="/usr/local/bin/docker-machine")
+existing = [x['Name'] for x in m.ls()]
 
-def create(prefix, n):
+@click.command()
+@click.argument("n", default=1)
+@click.argument("prefix", default="ss")
+def create(n, prefix):
     ps = []
     pool = Pool(processes=n)
     names = [prefix + str(i) for i in range(n)]
     pool.map(create_one, names)
 
 def create_one(name):
-    CREATE = """create --driver amazonec2 --amazonec2-region us-west-2 --amazonec2-request-spot-instance --amazonec2-spot-price 0.1 --amazonec2-instance-type m3.medium"""
+    if name in existing:
+        print(name, "already exists.")
+        return
+    CREATE = """create --driver amazonec2 --amazonec2-region us-west-2 --amazonec2-request-spot-instance --amazonec2-spot-price 0.1 --amazonec2-instance-type m4.large"""
     cmd = ["/usr/local/bin/docker-machine"] + CREATE.split(" ") + [name]
     p = Popen(cmd).wait()
     if p:
@@ -47,4 +54,4 @@ def set_env(machine_name):
         os.environ[k] = eval(v)
 
 if __name__ == "__main__":
-    create("abcde", 2)
+    create()

@@ -48,19 +48,13 @@ RUN ln -s /usr/bin/pip3 /usr/bin/pip
 COPY ./vendor/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 
 WORKDIR /selfsupervised
-# Copy over just requirements.txt at first. That way, the Docker cache doesn't
-# expire until we actually change the requirements.
 COPY ./requirements.txt /selfsupervised/
-# COPY ./requirements.dev.txt /selfsupervised/
 RUN pip install -r requirements.txt
-# RUN pip install -r requirements.dev.txt
 
 # Delay moving in the entire code until the very end.
 ENTRYPOINT ["/selfsupervised/vendor/Xdummy-entrypoint"]
 CMD ["pytest"]
 COPY . /selfsupervised
-# RUN python setup.py install
-RUN pip install -e vendor/mujoco-py/
-RUN pip install -e vendor/baselines/
+RUN pip install -e vendor/mujoco-py/ \
+    && pip install -e vendor/baselines/
 ENV PYTHONPATH $PYTHONPATH:/selfsupervised
-RUN python ss/init.py

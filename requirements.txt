@@ -12,3 +12,4 @@ numpydoc
 Click
 joblib
 atari-py
+docker[tls]
