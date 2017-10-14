@@ -1,7 +1,15 @@
 import os
 
-PROJECTDIR = "/Users/ashvin/code/selfsupervised/"
-DATADIR = "/Users/ashvin/code/ssdata/"
+is_docker = os.path.isfile("/.dockerenv")
+
+if is_docker:
+    PROJECTDIR = "/selfsupervised/"
+    DATADIR = "/selfsupervised/data/"
+    EXPDIR = "/selfsupervised/data/experiments/"
+else:
+    PROJECTDIR = "/Users/ashvin/code/selfsupervised/"
+    DATADIR = "/Users/ashvin/code/ssdata/"
+    EXPDIR = "/Users/ashvin/code/ssdata/s3/experiments/"
 
 def mkdir(directory):
     if not os.path.exists(directory):
@@ -9,4 +17,4 @@ def mkdir(directory):
     return directory
 
 def get_expdir(name):
-    return DATADIR + "experiments/" + name
+    return EXPDIR + name

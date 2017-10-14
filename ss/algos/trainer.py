@@ -16,6 +16,8 @@ from mpi4py import MPI
 
 import pdb
 
+from ss.remote import s3
+
 class Trainer:
     def __init__(self, **params):
         self.params = params
@@ -154,3 +156,6 @@ class Trainer:
                         # saver.save(sess, logdir + 'models/model', global_step=epoch)
                         with open(os.path.join(logdir, 'agent_%d.pkl' % epoch), 'wb') as f:
                             pickle.dump(agent, f)
+
+                        # todo: break this out into its own frequency parameter (one for sync, one for dumping the agent)
+                        s3.sync_up_expdir()
