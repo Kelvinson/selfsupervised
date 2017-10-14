@@ -13,3 +13,5 @@ Click
 joblib
 atari-py
 docker[tls]
+boto3
+awscli

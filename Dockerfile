@@ -37,6 +37,8 @@ RUN mkdir -p /root/.mujoco \
 COPY ./mjkey.txt /root/.mujoco/
 ENV LD_LIBRARY_PATH /root/.mujoco/mjpro150/bin:$LD_LIBRARY_PATH
 
+ENV AWS_CONFIG_FILE /selfsupervised/config
+
 COPY vendor/Xdummy /usr/local/bin/Xdummy
 RUN chmod +x /usr/local/bin/Xdummy
 
@@ -57,4 +59,5 @@ CMD ["pytest"]
 COPY . /selfsupervised
 RUN pip install -e vendor/mujoco-py/ \
     && pip install -e vendor/baselines/
+RUN python ss/import_dep.py
 ENV PYTHONPATH $PYTHONPATH:/selfsupervised
