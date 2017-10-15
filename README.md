@@ -14,6 +14,8 @@ Set up AWS IAM account and Docker account with credentials.
 
 `docker push` (only on system code changes)
 
-`python ss/remote/provision.py`
+`python ss/remote/provision.py 6` (gets 6 AWS instances with Docker)
 
-`python ss/remote/run.py`
+`python ss/remote/run.py ss/sandbox/her/sweep_lr_train_steps.py`
+
+This should start training 6 experiments and copy experiment data back to S3.

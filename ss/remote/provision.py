@@ -25,7 +25,8 @@ def create_one(name):
     if name in existing:
         print(name, "already exists.")
         return
-    CREATE = """create --driver amazonec2 --amazonec2-region us-west-2 --amazonec2-request-spot-instance --amazonec2-spot-price 0.1 --amazonec2-instance-type m4.large"""
+    # CREATE = """create --driver amazonec2 --amazonec2-region us-west-2 --amazonec2-request-spot-instance --amazonec2-spot-price 0.1 --amazonec2-instance-type m4.large"""
+    CREATE = """create --driver amazonec2 --amazonec2-region us-east-1 --amazonec2-request-spot-instance --amazonec2-spot-price 0.1 --amazonec2-instance-type m4.large"""
     cmd = ["/usr/local/bin/docker-machine"] + CREATE.split(" ") + [name]
     p = Popen(cmd).wait()
     if p:
