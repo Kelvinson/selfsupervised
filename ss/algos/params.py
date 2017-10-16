@@ -32,7 +32,6 @@ def get_params(**kwargs):
     params["normalize_observations"] = True
     params["popart"] = False
     params["clip_norm"] = None
-    params["buffer_size"] = 1e6
     params["her"] = False
 
     for key in kwargs:

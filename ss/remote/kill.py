@@ -11,12 +11,23 @@ from multiprocessing import Process, Pool
 
 m = machine.Machine(path="/usr/local/bin/docker-machine")
 
-def kill():
+@click.command()
+@click.argument("prefix", default="ss")
+@click.argument("start", default=0)
+@click.argument("end", default=1000)
+def kill(prefix, start, end):
+    N = len(prefix)
+    R = set(range(start, end))
     for x in m.ls():
         name = x['Name']
-        if name:
-            cmd = "/usr/local/bin/docker-machine rm -f " + name
-            Popen(cmd.split(" ")).wait()
+        if name and name[:N] == prefix:
+            try:
+                i = int(name[N:])
+                if i in R:
+                    cmd = "/usr/local/bin/docker-machine rm -f " + name
+                    Popen(cmd.split(" ")).wait()
+            except:
+                print("Skipping", name)
 
 if __name__ == "__main__":
     kill()

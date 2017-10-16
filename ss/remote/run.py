@@ -35,5 +35,11 @@ def parallel_run(cmd):
         p.send_keys('')
         p.send_keys('python %s %d' % (cmd, i))
 
+def parallel_quit():
+    for i, e in enumerate(existing):
+        w = s.select_window(e)
+        w.kill_window()
+
 if __name__ == "__main__":
     parallel_run()
+    # parallel_quit()
