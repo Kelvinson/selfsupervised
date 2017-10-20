@@ -7,7 +7,9 @@ from mujoco_py.generated import const
 import scipy.misc
 
 def obs_to_goal(obs):
-    """state to goal function for HER. To pickle it has to be like this"""
+    """State to goal function for HER.
+    To pickle the function it has to be defined like this.
+    """
     return obs[1:3]
 
 def get_l2_reward(obs):

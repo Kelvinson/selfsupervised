@@ -3,6 +3,8 @@
 import collections
 import numpy as np
 
+from ss.envs.ball_env import BallEnv
+
 def get_params(**kwargs):
     params = collections.OrderedDict()
     params["expname"] = None
@@ -33,6 +35,7 @@ def get_params(**kwargs):
     params["popart"] = False
     params["clip_norm"] = None
     params["her"] = False
+    params["env_type"] = BallEnv
 
     for key in kwargs:
         params[key] = kwargs[key]

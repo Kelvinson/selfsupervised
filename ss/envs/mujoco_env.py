@@ -112,7 +112,7 @@ class MujocoEnv(gym.Env):
     def _render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:
-                self._get_viewer().finish()
+                # self._get_viewer().finish()
                 self.viewer = None
             return
         self._get_viewer().render()
@@ -151,3 +151,6 @@ class MujocoEnv(gym.Env):
             self.sim.data.qpos.flat,
             self.sim.data.qvel.flat
         ])
+
+    def get_state_data(self):
+        return self.sim.data.qpos.flat[:], self.sim.data.qvel.flat[:]

@@ -10,8 +10,6 @@ from baselines.common.misc_util import (
     boolean_flag,
 )
 
-from ss.envs.ball_env import BallEnv, obs_to_goal
-
 from ss.algos.trainer import Trainer
 from ss.algos.params import get_params
 
@@ -36,7 +34,7 @@ def cmdrun(args):
     kwargs = {}
     for k, v in zip(args[::2], args[1::2]):
         kwargs[k] = eval(v)
-    params = get_params(her=True, **kwargs)
+    params = get_params(**kwargs)
     run_parallel([params])
 
 def run_parallel(paramlist, parallel=0):
@@ -67,7 +65,7 @@ def run(params):
         logger.configure(logdir, ['stdout', 'log', 'json', 'tensorboard'])
 
     # Create envs.
-    env = BallEnv()
+    env = params["env_type"]()
     params["observation_shape"] = env.observation_space.shape
     params["action_shape"] = env.action_space.shape
     params["obs_to_goal"] = env.obs_to_goal
@@ -75,7 +73,7 @@ def run(params):
     params["reward_fn"] = env.reward_fn
 
     # env = gym.make(env_id)
-    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank), allow_early_resets=True)
+    # env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), "%i.monitor.json"%rank), allow_early_resets=True)
     gym.logger.setLevel(logging.WARN)
 
     # Configure components.

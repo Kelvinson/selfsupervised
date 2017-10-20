@@ -14,7 +14,7 @@ def main(agent_pickle):
     for i in range(100):
         env.reset()
         o = env.get_obs()
-        for i in range(50):
+        for i in range(agent.horizon):
             u, q = agent.pi(o)
             u = u.flatten()
             o, r, _, __ = env.step(u)

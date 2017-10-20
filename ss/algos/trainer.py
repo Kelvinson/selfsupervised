@@ -17,6 +17,8 @@ from mpi4py import MPI
 import pdb
 
 from ss.remote import s3
+from ss.utils.rollout import Rollout
+import ss.path as path
 
 class Trainer:
     def __init__(self, **params):
@@ -26,6 +28,11 @@ class Trainer:
 
     def train(self):
         rank = MPI.COMM_WORLD.Get_rank()
+
+        logdir = logger.get_dir()
+        if rank == 0 and logdir:
+            path.mkdir(os.path.join(logdir, 'rollouts'))
+            path.mkdir(os.path.join(logdir, 'policies'))
 
         env = self.env
 
@@ -64,6 +71,7 @@ class Trainer:
             epoch_episode_steps = []
             epoch_start_time = time.time()
             epoch_episodes = 0
+            rollouts = []
             for epoch in range(self.nb_epochs):
                 epoch_episode_rewards = []
                 epoch_episode_success = []
@@ -74,9 +82,12 @@ class Trainer:
 
                 for cycle in range(self.nb_epoch_cycles):
                     # Perform rollouts.
+
+                    rollout = Rollout()
                     for t_rollout in range(self.horizon):
                         # Predict next action.
                         action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
+                        state = env.get_state_data()
                         assert action.shape == env.action_space.shape
 
                         # Execute next action.
@@ -84,6 +95,8 @@ class Trainer:
                             env.render()
                         assert max_action.shape == action.shape
                         new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+
+                        rollout.store_transition(state, action, r)
                         t += 1
                         if rank == 0 and self.render:
                             env.render()
@@ -95,6 +108,11 @@ class Trainer:
                         epoch_qs.append(q)
                         agent.store_transition(obs, action, r, new_obs, done)
                         obs = new_obs
+
+                    state = env.get_state_data()
+                    rollout.store_transition(state, None, None) # store final state
+                    if cycle == 0: # save 1 rollout per epoch
+                        rollouts.append(rollout)
 
                     epoch_episode_rewards.append(episode_reward)
                     epoch_episode_success.append(r + 1)
@@ -146,7 +164,6 @@ class Trainer:
                     logger.record_tabular(key, combined_stats[key])
                 logger.dump_tabular()
                 logger.info('')
-                logdir = logger.get_dir()
                 if rank == 0 and logdir:
                     if hasattr(env, 'get_state'):
                         with open(os.path.join(logdir, 'env_state.pkl'), 'wb') as f:
@@ -154,8 +171,12 @@ class Trainer:
 
                     if epoch % 100 == 0:
                         # saver.save(sess, logdir + 'models/model', global_step=epoch)
-                        with open(os.path.join(logdir, 'agent_%d.pkl' % epoch), 'wb') as f:
+                        with open(os.path.join(logdir, 'policies/agent_%d.pkl' % epoch), 'wb') as f:
                             pickle.dump(agent, f)
+
+                        with open(os.path.join(logdir, 'rollouts/rollouts_%d.pkl' % epoch), 'wb') as f:
+                            pickle.dump(rollouts, f)
+                        rollouts = []
 
                         # todo: break this out into its own frequency parameter (one for sync, one for dumping the agent)
                         s3.sync_up_expdir()
