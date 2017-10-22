@@ -23,6 +23,8 @@ def get_sparse_reward(obs):
     block_pos = obs[2:4]
     goal_pos = obs[4:6]
     r = np.linalg.norm(block_pos - goal_pos) < 0.1
+    # print(block_pos)
+    # print(goal_pos)
     return (r - 1).astype(float)
 
 class BoxEnv(MujocoEnv):
@@ -47,12 +49,13 @@ class BoxEnv(MujocoEnv):
         self.reset()
 
         # qpos (11):
-        # ball_{x, y}, block_{x, y, z}, block_{t1, t2, t3}, marker_{x, y, z}
+        # ball_{x, y}, block_{x, y, z}, block_{t1, t2, t3}, marker_{?, x, y}
         # x0_range = np.array([0.4, 0.4, 0.4, 0.4, 0, 0, 0, 0, 0, 0, 0])
         # self.x0_dist = spaces.Box(-x0_range, x0_range)
 
     def set_action(self, u):
         self.sim.data.qvel[:2] = u.copy()
+        # self.sim.data.qpos[10] += 0.01
 
     def get_reward(self, obs):
         return self.reward_fn(obs)
@@ -60,7 +63,7 @@ class BoxEnv(MujocoEnv):
     def get_obs(self):
         o = np.zeros((6))
         o[:4] = self.sim.data.qpos[:4].copy()
-        o[4:] = self.sim.data.qpos[8:10].copy()
+        o[4:] = self.sim.data.qpos[9:11].copy()
         return o
 
     def set_view(self, cam_id):
@@ -80,7 +83,7 @@ class BoxEnv(MujocoEnv):
 
         # qpos = self.x0_dist.sample()
         rest = np.zeros((7))
-        rest[4:6] = goal_pos
+        rest[5:7] = goal_pos
         # rest[2] = np.random.random() * 5
         qpos = np.concatenate((ball_pos, block_pos, rest))
         qvel = np.zeros(self.init_qvel.shape)
@@ -114,10 +117,12 @@ if __name__ == "__main__":
     b.reset()
     b.render()
 
-    for i in range(10):
+    for i in range(1000):
         b.reset()
-        for t in range(100):
+        for t in range(10):
             shape = b.action_space.shape
             u = np.random.random(shape) * 2 - 1
-            b.step(u)
+            u = np.zeros(shape)
+            o, _, _, _ = b.step(u)
+            print(b.reward_fn(o))
             b.render()
