@@ -3,25 +3,39 @@ import numpy as np
 
 import json
 from pprint import pprint
+import tensorflow as tf
 
 read_tb = lambda: None
 import glob
+import os
 import itertools
 
 cached_tbs = {}
 cached_params = {}
 
+def read_tb(eventfile):
+    x = {}
+    y = {}
+    for summary in tf.train.summary_iterator(eventfile):
+        s = summary.step
+        for v in summary.summary.value:
+            l = x.setdefault(v.tag, [])
+            l.append(s)
+
+            l = y.setdefault(v.tag, [])
+            l.append(v.simple_value)
+
+    r = {}
+    for key in x:
+        sorted_index = np.argsort(x[key])
+        r[key] = (np.array(x[key])[sorted_index], np.array(y[key])[sorted_index])
+
+    return r
+
 def get_tb(eventfile):
     if eventfile not in cached_tbs:
         cached_tbs[eventfile] = read_tb(eventfile)
     return cached_tbs[eventfile]
-
-def get_series(tb, key):
-    s = tb[key]
-    idx = ~np.isnan(s)
-    x = np.arange(len(idx))[idx]
-    y = s[idx]
-    return x, y
 
 def read_params_from_output(filename, maxlines=200):
     if not filename in cached_params:

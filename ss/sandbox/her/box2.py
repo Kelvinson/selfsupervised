@@ -1,8 +1,9 @@
 from ss.algos.main import run_parallel
 from ss.algos.params import get_params
 import click
+from ss.envs.box_env import BoxEnv
 
-expname = "ball1/"
+expname = "box2/"
 paramlist = []
 i = 0
 for nb_train_steps in [5, 25]:
@@ -13,9 +14,10 @@ for nb_train_steps in [5, 25]:
                                actor_lr=actor_lr,
                                critic_lr=critic_lr,
                                her=her,
-                               horizon=50,
+                               horizon=100,
                                expname=expname+str(i),
-                               nb_epochs=500)
+                               nb_epochs=5000,
+                               env_type=BoxEnv)
                 paramlist.append(p)
                 i += 1
 

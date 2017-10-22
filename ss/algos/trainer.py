@@ -33,6 +33,8 @@ class Trainer:
         if rank == 0 and logdir:
             path.mkdir(os.path.join(logdir, 'rollouts'))
             path.mkdir(os.path.join(logdir, 'policies'))
+            with open(os.path.join(logdir, 'policies/agent_%d.pkl' % epoch), 'wb') as f:
+                pickle.dump(agent, f)
 
         env = self.env
 
