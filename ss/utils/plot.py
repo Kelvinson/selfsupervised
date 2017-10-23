@@ -37,6 +37,16 @@ def get_tb(eventfile):
         cached_tbs[eventfile] = read_tb(eventfile)
     return cached_tbs[eventfile]
 
+def load_exps(dirname, paramlist):
+    assert dirname[-1] == "/"
+    exps = []
+    for expname in glob.glob(dirname + '*'):
+        expid = int(expname[len(dirname):])
+        tbfilename = glob.glob(expname + "/tb/events.*")[0]
+        t = get_tb(tbfilename)
+        exps.append((t, paramlist[expid]))
+    return exps
+
 def read_params_from_output(filename, maxlines=200):
     if not filename in cached_params:
         f = open(filename, "r")
@@ -55,10 +65,6 @@ def read_params_from_output(filename, maxlines=200):
 
 def prettify(p, key):
     """Postprocessing p[key] for printing"""
-    if key == "attention":
-        a = eval(p[key])
-        if a:
-            return str(a[1])
     return p[key]
 
 def prettify_configuration(config):
@@ -66,14 +72,8 @@ def prettify_configuration(config):
         return ""
     s = ""
     for c in config:
-        k, v = c[0], c[1]
+        k, v = str(c[0]), str(c[1])
         x = ""
-        if k == "attention":
-            a = eval(v)
-            if a:
-                v = str(a[1])
-            else:
-                v = str(a)
         x = k + "=" + v + ", "
         s += x
     return s[:-2]
@@ -88,15 +88,9 @@ def comparison(exps, key, vary = "expdir", f=true_fn, w="evaluator"):
     plt.title("Vary " + vary)
     plt.ylabel(key)
     lines = []
-    for e in exps:
-        name = e[e.rfind('/')+1:]
-        eventfile = glob.glob(e + "/%s/*/events*" % w)[0]
-        outputfile = glob.glob(e + "/%s/*/output.txt" % w)[0]
-        p = read_params_from_output(outputfile)
-        p["expdir"] = name
+    for e, p in exps:
         if f(p):
-            tb = get_tb(eventfile)
-            x, y = get_series(tb, key)
+            x, y = e[key]
             line, = plt.plot(x, y, label=prettify(p, vary))
             lines.append(line)
     plt.legend(handles=lines, bbox_to_anchor=(1.5, 0.75))
@@ -105,9 +99,7 @@ def split(exps, keys, vary = "expdir", split=[], f=true_fn, w="evaluator"):
     split_values = {}
     for s in split:
         split_values[s] = set()
-    for e in exps:
-        outputfile = glob.glob(e + "/%s/*/output.txt" % w)[0]
-        p = read_params_from_output(outputfile)
+    for e, p in exps:
         if f(p):
             for s in split:
                 split_values[s].add(p[s])

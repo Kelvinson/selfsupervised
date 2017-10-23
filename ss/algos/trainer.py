@@ -33,8 +33,8 @@ class Trainer:
         if rank == 0 and logdir:
             path.mkdir(os.path.join(logdir, 'rollouts'))
             path.mkdir(os.path.join(logdir, 'policies'))
-            with open(os.path.join(logdir, 'policies/agent_%d.pkl' % epoch), 'wb') as f:
-                pickle.dump(agent, f)
+            with open(os.path.join(logdir, 'params.pkl'), 'wb') as f:
+                pickle.dump(self, f)
 
         env = self.env
 
@@ -182,3 +182,12 @@ class Trainer:
 
                         # todo: break this out into its own frequency parameter (one for sync, one for dumping the agent)
                         s3.sync_up_expdir()
+
+    # TODO: this should restore the state of a training. But for now it just pickles params
+    def __getstate__(self):
+        exclude_vars = set(["env"])
+        args = {}
+        for k in self.params:
+            if k not in exclude_vars:
+                args[k] = self.params[k]
+        return {'params': args}

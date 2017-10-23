@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 from ss.envs.ball_env import BallEnv
+from ss.envs.box_env import BoxEnv
 import click
 
 class Rollout:
@@ -41,7 +42,7 @@ class Rollout:
 def play(rollout_pickle_file):
     f = open(rollout_pickle_file, "rb")
     rollouts = pickle.load(f)
-    env = BallEnv()
+    env = BoxEnv()
     for r in rollouts:
         for i in range(len(r.states)):
             s = r.states[i]
