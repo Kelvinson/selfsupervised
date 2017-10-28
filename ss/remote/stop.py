@@ -48,6 +48,29 @@ def parallel_quit(start, end):
         except:
             print("did not kill", i, e)
 
+
+@click.command()
+@click.argument("start", default=0)
+@click.argument("end", default=100)
+def parallel_stop(start, end):
+    end = min(len(existing), end)
+    ids = range(start, end)
+    names = [existing[i] for i in ids]
+    pool = Pool(processes=len(ids))
+    pool.map(stop_one, names)
+
+def stop_one(e):
+    cmd = '/usr/local/bin/docker-machine ssh %s "sudo killall python"' % e
+    print(cmd)
+    p = Popen(cmd, shell=True)
+    stdout, stderr = p.communicate()
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr)
+    print("success.")
+
 if __name__ == "__main__":
     # parallel_run()
-    parallel_quit()
+    # parallel_quit()
+    parallel_stop()

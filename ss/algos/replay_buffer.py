@@ -96,17 +96,24 @@ class HERBuffer(ReplayBuffer):
         if not self.data:
             return
 
+        # print("real replay")
         for obs0, action, reward, obs1 in self.data:
             obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
+            # print(reward, end=" ")
             super().append(obs0, action, reward, obs1, None)
         final_obs = self.data[-1][-1]
         her_goal = self.obs_to_goal(final_obs)
+        # print()
+        # print("HER replay")
         for obs0, action, reward, obs1 in self.data:
             obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
             obs0[self.goal_slice] = her_goal
             obs1[self.goal_slice] = her_goal
             reward =self.reward_fn(obs1)
+            # print(reward, end=" ")
             super().append(obs0, action, reward, obs1, None)
+        # print()
+        # pdb.set_trace()
         self.data = []
 
     def append(self, obs0, action, reward, obs1, _, training=True):

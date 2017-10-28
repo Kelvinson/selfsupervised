@@ -3,7 +3,7 @@
 import collections
 import numpy as np
 
-from ss.envs.ball_env import BallEnv
+# from ss.envs.ball_env import BallEnv
 
 def get_params(**kwargs):
     params = collections.OrderedDict()
@@ -20,6 +20,7 @@ def get_params(**kwargs):
     params["seed"] = 0
     params["nb_epochs"] = 5000
     params["nb_epoch_cycles"] = 20
+    params["nb_test_rollouts"] = 10
     params["nb_train_steps"] = 50  # per epoch cycle and MPI worker
     params["render"] = False
     params["her"] = False
@@ -35,7 +36,8 @@ def get_params(**kwargs):
     params["popart"] = False
     params["clip_norm"] = None
     params["her"] = False
-    params["env_type"] = BallEnv
+    params["env_type"] = None
+    params["sync"] = True
 
     for key in kwargs:
         params[key] = kwargs[key]

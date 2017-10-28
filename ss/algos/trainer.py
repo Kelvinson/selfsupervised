@@ -82,6 +82,9 @@ class Trainer:
                 epoch_actor_losses = []
                 epoch_critic_losses = []
 
+                test_distance = []
+                test_success = []
+
                 for cycle in range(self.nb_epoch_cycles):
                     # Perform rollouts.
 
@@ -98,7 +101,7 @@ class Trainer:
                         assert max_action.shape == action.shape
                         new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
 
-                        rollout.store_transition(state, action, r)
+                        rollout.store_transition(state, action, r, info)
                         t += 1
                         if rank == 0 and self.render:
                             env.render()
@@ -127,13 +130,40 @@ class Trainer:
                     agent.reset()
                     obs = env.reset()
 
-                    # Train.
-                    for t_train in range(self.nb_train_steps):
-                        cl, al = agent.train()
-                        epoch_critic_losses.append(cl)
-                        epoch_actor_losses.append(al)
+                    # training loop used to be here
+                # Train.
+                for t_train in range(self.nb_train_steps):
+                    cl, al = agent.train()
+                    epoch_critic_losses.append(cl)
+                    epoch_actor_losses.append(al)
                 agent.update_target_net()
 
+                for cycle in range(1):
+                    # Perform TEST rollouts.
+
+                    rollout = Rollout()
+                    for t_rollout in range(self.horizon):
+                        # Predict next action.
+                        action, q = agent.pi(obs, apply_noise=False, compute_Q=True)
+                        state = env.get_state_data()
+                        assert action.shape == env.action_space.shape
+
+                        # Execute next action.
+                        if rank == 0 and self.render:
+                            env.render()
+                        assert max_action.shape == action.shape
+                        new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+
+                        rollout.store_transition(state, action, r, info)
+                        if rank == 0 and self.render:
+                            env.render()
+                        obs = new_obs
+
+                    test_distance.append(info['distance'])
+                    test_success.append(r + 1)
+
+                    agent.reset()
+                    obs = env.reset()
                 # Log stats.
                 epoch_train_duration = time.time() - epoch_start_time
                 duration = time.time() - start_time
@@ -145,11 +175,15 @@ class Trainer:
                 # Rollout statistics.
                 combined_stats['rollout/return'] = mpi_mean(epoch_episode_rewards)
                 combined_stats['rollout/success'] = mpi_mean(epoch_episode_success)
+                combined_stats['rollout/distance'] = mpi_mean(epoch_episode_success)
                 combined_stats['rollout/episode_steps'] = mpi_mean(epoch_episode_steps)
                 combined_stats['rollout/episodes'] = mpi_sum(epoch_episodes)
                 combined_stats['rollout/actions_mean'] = mpi_mean(epoch_actions)
                 combined_stats['rollout/actions_std'] = mpi_std(epoch_actions)
                 combined_stats['rollout/Q_mean'] = mpi_mean(epoch_qs)
+
+                combined_stats['test/distance'] = mpi_mean(test_distance)
+                combined_stats['test/success'] = mpi_mean(test_success)
 
                 # Train statistics.
                 combined_stats['train/loss_actor'] = mpi_mean(epoch_actor_losses)
@@ -180,8 +214,9 @@ class Trainer:
                             pickle.dump(rollouts, f)
                         rollouts = []
 
-                        # todo: break this out into its own frequency parameter (one for sync, one for dumping the agent)
-                        s3.sync_up_expdir()
+                        if self.sync:
+                            # todo: break this out into its own frequency parameter (one for sync, one for dumping the agent)
+                            s3.sync_up_expdir()
 
     # TODO: this should restore the state of a training. But for now it just pickles params
     def __getstate__(self):

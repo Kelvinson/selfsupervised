@@ -9,10 +9,12 @@ scipy>=0.18.0
 sphinx
 sphinx_rtd_theme
 numpydoc
-Click
+click
 joblib
 atari-py
 docker[tls]
 boto3
 awscli
 python-docker-machine
+mujoco-py==0.5.7
+libtmux

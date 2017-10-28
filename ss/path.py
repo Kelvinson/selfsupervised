@@ -11,6 +11,8 @@ else:
     DATADIR = "/Users/ashvin/code/ssdata/"
     EXPDIR = "/Users/ashvin/code/ssdata/s3/experiments/"
 
+MODELDIR = PROJECTDIR + "models/"
+
 def mkdir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)

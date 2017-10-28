@@ -80,8 +80,7 @@ def run(params):
     params["env"] = env
 
     # Seed everything to make things reproducible.
-    seed = np.random.randint(0, 1000000)
-    params["seed"] = seed
+    seed = params["seed"]
     logger.info('rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
     tf.reset_default_graph()
     set_global_seeds(seed)

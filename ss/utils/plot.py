@@ -12,6 +12,9 @@ import itertools
 
 cached_tbs = {}
 cached_params = {}
+def clear():
+    cached_tbs.clear()
+    cached_params.clear()
 
 def read_tb(eventfile):
     x = {}
@@ -39,12 +42,14 @@ def get_tb(eventfile):
 
 def load_exps(dirname, paramlist):
     assert dirname[-1] == "/"
+    fs = glob.glob(dirname + '*')
     exps = []
-    for expname in glob.glob(dirname + '*'):
+    for expname in fs:
         expid = int(expname[len(dirname):])
         tbfilename = glob.glob(expname + "/tb/events.*")[0]
         t = get_tb(tbfilename)
-        exps.append((t, paramlist[expid]))
+        exps.append((expid, t, paramlist[expid]))
+    exps = [(b,c) for a, b, c in sorted(exps)]
     return exps
 
 def read_params_from_output(filename, maxlines=200):
@@ -79,7 +84,8 @@ def prettify_configuration(config):
     return s[:-2]
 
 true_fn = lambda p: True
-def comparison(exps, key, vary = "expdir", f=true_fn, w="evaluator"):
+identity_fn = lambda x: x
+def comparison(exps, key, vary = "expdir", f=true_fn, w="evaluator", smooth=identity_fn):
     """exps is a list of directories
     key is the Y variable
     vary is the X variable
@@ -91,11 +97,13 @@ def comparison(exps, key, vary = "expdir", f=true_fn, w="evaluator"):
     for e, p in exps:
         if f(p):
             x, y = e[key]
-            line, = plt.plot(x, y, label=prettify(p, vary))
+            y_smooth = smooth(y)
+            x_smooth = x[:len(y_smooth)]
+            line, = plt.plot(x_smooth, y_smooth, label=prettify(p, vary))
             lines.append(line)
     plt.legend(handles=lines, bbox_to_anchor=(1.5, 0.75))
 
-def split(exps, keys, vary = "expdir", split=[], f=true_fn, w="evaluator"):
+def split(exps, keys, vary = "expdir", split=[], f=true_fn, w="evaluator", smooth=identity_fn):
     split_values = {}
     for s in split:
         split_values[s] = set()
@@ -111,18 +119,24 @@ def split(exps, keys, vary = "expdir", split=[], f=true_fn, w="evaluator"):
             c.append((s, v))
         configurations.append(c)
     for c in itertools.product(*configurations):
-        f = lambda p: all([p[k] == v for k, v in c])
+        fsplit = lambda p: all([p[k] == v for k, v in c]) and f(p)
         for key in keys:
-            comparison(exps, key, vary, f=f, w=w)
+            comparison(exps, key, vary, f=fsplit, w=w, smooth=smooth)
             plt.title(prettify_configuration(c) + " Vary " + vary)
 
 def diagnose(exp, keys=[]):
-    outputfile = glob.glob(exp + "/evaluator/*/output.txt")[0]
-    p = read_params_from_output(outputfile)
-    print(exp)
+    e, p = exp
     for k in keys:
         print(k, p[k])
     comparison([exp], "worker/reward", w="worker")
     comparison([exp], "optim/loss_bc", w="optimizer")
     comparison([exp], "eval/success_rate")
     comparison([exp], "eval/reward")
+
+def ma_filter(N):
+    return lambda x: moving_average(x, N)
+
+def moving_average(a, n=3) :
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n

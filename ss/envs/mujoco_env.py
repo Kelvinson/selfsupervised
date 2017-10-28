@@ -132,15 +132,15 @@ class MujocoEnv(gym.Env):
         return self.viewer
 
     def get_body_com(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
+        idx = self.model.body_names.index(body_name)
         return self.model.data.com_subtree[idx]
 
     def get_body_comvel(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
+        idx = self.model.body_names.index(body_name)
         return self.model.body_comvels[idx]
 
     def get_body_xmat(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
+        idx = self.model.body_names.index(body_name)
         return self.model.data.xmat[idx].reshape((3, 3))
 
     def get_site_pos(self, site_name):

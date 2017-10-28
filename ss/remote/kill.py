@@ -18,6 +18,7 @@ m = machine.Machine(path="/usr/local/bin/docker-machine")
 def kill(prefix, start, end):
     N = len(prefix)
     R = set(range(start, end))
+    input(("kill", R, "?"))
     for x in m.ls():
         name = x['Name']
         if name and name[:N] == prefix:

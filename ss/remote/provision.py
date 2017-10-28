@@ -13,12 +13,13 @@ m = machine.Machine(path="/usr/local/bin/docker-machine")
 existing = [x['Name'] for x in m.ls()]
 
 @click.command()
-@click.argument("n", default=1)
+@click.argument("start", default=0)
+@click.argument("end", default=1)
 @click.argument("prefix", default="ss")
-def create(n, prefix):
+def create(start, end, prefix):
     ps = []
-    pool = Pool(processes=n)
-    names = [prefix + str(i) for i in range(n)]
+    pool = Pool(processes=int(end-start))
+    names = [prefix + str(i) for i in range(start, end)]
     pool.map(create_one, names)
 
 def create_one(name):
@@ -42,7 +43,7 @@ def docker_pull(machine_name):
     p = Popen(cmd_list).wait()
     print(machine_name, "login", p)
 
-    cmd = "docker pull anair17/ss"
+    cmd = "docker pull anair17/mj13"
     cmd_list = cmd.split(" ")
     p = Popen(cmd_list).wait()
     print(machine_name, "docker pull", p)

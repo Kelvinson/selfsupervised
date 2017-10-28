@@ -31,11 +31,11 @@ RUN curl -o /usr/local/bin/patchelf https://s3-us-west-2.amazonaws.com/openai-sc
 ENV LANG C.UTF-8
 
 RUN mkdir -p /root/.mujoco \
-    && wget https://www.roboti.us/download/mjpro150_linux.zip -O mujoco.zip \
+    && wget https://www.roboti.us/download/mjpro131_linux.zip -O mujoco.zip \
     && unzip mujoco.zip -d /root/.mujoco \
     && rm mujoco.zip
 COPY ./mjkey.txt /root/.mujoco/
-ENV LD_LIBRARY_PATH /root/.mujoco/mjpro150/bin:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH /root/.mujoco/mjpro131/bin:$LD_LIBRARY_PATH
 
 ENV AWS_CONFIG_FILE /selfsupervised/config
 
@@ -57,7 +57,6 @@ RUN pip install -r requirements.txt
 ENTRYPOINT ["/selfsupervised/vendor/Xdummy-entrypoint"]
 CMD ["pytest"]
 COPY . /selfsupervised
-RUN pip install -e vendor/mujoco-py/ \
-    && pip install -e vendor/baselines/
+RUN pip install -e vendor/baselines/
 RUN python ss/import_dep.py
 ENV PYTHONPATH $PYTHONPATH:/selfsupervised

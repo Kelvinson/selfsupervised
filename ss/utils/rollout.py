@@ -1,7 +1,5 @@
 import numpy as np
 import pickle
-from ss.envs.ball_env import BallEnv
-from ss.envs.box_env import BoxEnv
 import click
 
 class Rollout:
@@ -9,12 +7,14 @@ class Rollout:
         self.states = []
         self.actions = []
         self.rewards = []
+        self.info = []
         pass
 
-    def store_transition(self, state, action, reward):
+    def store_transition(self, state, action, reward, info=None):
         self.states.append(state)
         self.actions.append(action)
         self.rewards.append(reward)
+        self.info.append(info)
 
     def play(self):
         pass
@@ -50,4 +50,6 @@ def play(rollout_pickle_file):
             env.render()
 
 if __name__ == "__main__":
+    from ss.envs.ball_env import BallEnv
+    from ss.envs.box_env import BoxEnv
     play()
