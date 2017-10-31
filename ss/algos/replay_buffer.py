@@ -125,3 +125,53 @@ class HERBuffer(ReplayBuffer):
     @property
     def nb_entries(self):
         return len(self.observations0)
+
+class InverseBuffer(ReplayBuffer):
+    def __init__(self, limit, action_shape, observation_shape, obs_to_goal, goal_slice, reward_fn):
+        """Replay buffer that does Hindsight Experience Replay
+        obs_to_goal is a function that converts observations to goals
+        goal_slice is a slice of indices of goal in observation
+        """
+        ReplayBuffer.__init__(self, limit, action_shape, observation_shape)
+
+        self.obs_to_goal = obs_to_goal
+        self.goal_slice = goal_slice
+        self.reward_fn = reward_fn
+        self.data = [] # stores current episode
+
+    def flush(self):
+        """Dump the current data into the replay buffer with (final) HER"""
+        if not self.data:
+            return
+
+        # print("real replay")
+        # for obs0, action, reward, obs1 in self.data:
+        #     obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
+        #     # print(reward, end=" ")
+        #     super().append(obs0, action, reward, obs1, None)
+        for i in range(0, len(self.data), 1):
+            final_obs = self.data[i][-1]
+            her_goal = self.obs_to_goal(final_obs)
+            # print()
+            # print("HER replay")
+            for obs0, action, reward, obs1 in self.data[:i]:
+                obs0, action, reward, obs1 = obs0.copy(), action.copy(), reward.copy(), obs1.copy()
+                obs0[self.goal_slice] = her_goal
+                obs1[self.goal_slice] = her_goal
+                reward =self.reward_fn(obs1)
+                # print(reward, end=" ")
+                super().append(obs0, action, reward, obs1, None)
+        # print()
+        # pdb.set_trace()
+        self.data = []
+
+    def append(self, obs0, action, reward, obs1, _, training=True):
+        if not training:
+            return
+
+        self.data.append((obs0, action, reward, obs1))
+
+    @property
+    def nb_entries(self):
+        return len(self.observations0)
+

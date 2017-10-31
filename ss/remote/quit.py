@@ -36,17 +36,17 @@ def parallel_run(cmd):
         p.send_keys('python %s %d' % (cmd, i))
 
 @click.command()
+@click.argument("prefix", default="ss")
 @click.argument("start", default=0)
 @click.argument("end", default=1000)
-def parallel_quit(start, end):
-    for i, e in enumerate(existing):
-        if not i in range(start, end):
-            continue
+def parallel_quit(prefix, start, end):
+    for i in range(start, end):
+        name = prefix + str(i)
         try:
-            w = s.select_window(e)
+            w = s.select_window(name)
             w.kill_window()
         except:
-            print("did not kill", i, e)
+            print("did not kill", name)
 
 if __name__ == "__main__":
     # parallel_run()

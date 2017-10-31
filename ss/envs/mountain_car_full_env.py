@@ -19,8 +19,8 @@ def obs_to_goal(obs):
 
 def get_sparse_reward(obs):
     """-1 if far, 0 if close"""
-    state = obs[0:1]
-    goal = obs[2:3]
+    state = obs[0:2]
+    goal = obs[2:4]
     r = np.linalg.norm(state - goal) < 0.1
     return (r - 1).astype(float)
 
@@ -32,7 +32,7 @@ class MountainCarEnv(gym.Env):
 
     def __init__(self):
         self.obs_to_goal = obs_to_goal
-        self.goal_idx = slice(2, 3)
+        self.goal_idx = slice(2, 4)
         self.reward_fn = get_sparse_reward
 
         self.min_action = -1.0
@@ -50,8 +50,8 @@ class MountainCarEnv(gym.Env):
 
         self.action_space = spaces.Box(self.min_action, self.max_action, shape = (1,))
         self.state_space = spaces.Box(self.low_state, self.high_state)
-        l = np.array([self.min_position, -self.max_speed, self.min_position])
-        h = np.array([self.max_position, self.max_speed, self.max_position])
+        l = np.array([self.min_position, -self.max_speed, self.min_position, -self.max_speed])
+        h = np.array([self.max_position, self.max_speed, self.max_position, self.max_speed])
         self.observation_space = spaces.Box(l, h)
 
         self._seed()
@@ -95,7 +95,7 @@ class MountainCarEnv(gym.Env):
     def _reset(self):
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
         # self.state = self.observation_space.sample()
-        self.goal = self.state_space.sample()[:1]
+        self.goal = self.state_space.sample()
         return self.get_obs()
 
     def get_state_data(self):

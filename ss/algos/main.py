@@ -89,7 +89,11 @@ def run(params):
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
         start_time = time.time()
-    t = Trainer(**params)
+    if params["trainer"]:
+        tr = params["trainer"]
+    else:
+        tr = Trainer
+    t = tr(**params)
     t.train()
     env.close()
     if rank == 0:

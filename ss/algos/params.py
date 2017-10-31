@@ -38,6 +38,9 @@ def get_params(**kwargs):
     params["her"] = False
     params["env_type"] = None
     params["sync"] = True
+    params["trainer"] = None
+    params["resets"] = False
+    params["resets"] = False
 
     for key in kwargs:
         params[key] = kwargs[key]

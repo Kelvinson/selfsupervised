@@ -46,10 +46,11 @@ def load_exps(dirname, paramlist):
     exps = []
     for expname in fs:
         expid = int(expname[len(dirname):])
-        tbfilename = glob.glob(expname + "/tb/events.*")[0]
-        t = get_tb(tbfilename)
-        exps.append((expid, t, paramlist[expid]))
-    exps = [(b,c) for a, b, c in sorted(exps)]
+        print(expid)
+        for tbfilename in glob.glob(expname + "/tb/events.*"):
+            t = get_tb(tbfilename)
+            exps.append((expid, tbfilename, t, paramlist[expid]))
+    exps = [(c, d) for a, b, c, d in sorted(exps)]
     return exps
 
 def read_params_from_output(filename, maxlines=200):

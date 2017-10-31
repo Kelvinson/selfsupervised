@@ -2,6 +2,9 @@ import os
 
 is_docker = os.path.isfile("/.dockerenv")
 
+# DOCKER_IMAGE_NAME = "anair17/ss"
+DOCKER_IMAGE_NAME = "anair17/mj13"
+
 if is_docker:
     PROJECTDIR = "/selfsupervised/"
     DATADIR = "/selfsupervised/data/"

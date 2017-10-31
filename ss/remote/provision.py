@@ -7,6 +7,7 @@ import time
 import click
 import machine
 
+from ss.path import DOCKER_IMAGE_NAME
 from multiprocessing import Process, Pool
 
 m = machine.Machine(path="/usr/local/bin/docker-machine")
@@ -43,7 +44,7 @@ def docker_pull(machine_name):
     p = Popen(cmd_list).wait()
     print(machine_name, "login", p)
 
-    cmd = "docker pull anair17/mj13"
+    cmd = "docker pull " + DOCKER_IMAGE_NAME
     cmd_list = cmd.split(" ")
     p = Popen(cmd_list).wait()
     print(machine_name, "docker pull", p)

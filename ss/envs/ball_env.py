@@ -43,6 +43,7 @@ class BallEnv(MujocoEnv):
 
         if contained:
             mjfile = "models/ball_env_contained.xml"
+            # mjfile = "models/ball_env_contained_blocked.xml"
         else:
             mjfile = "models/ball_env.xml"
         MujocoEnv.__init__(self, mjfile)
@@ -51,10 +52,12 @@ class BallEnv(MujocoEnv):
     def reset(self):
         self.t = 0
         interior = 0.3
-        self.ball_pos = np.random.random((2)) * 2 * interior - interior
+        # self.ball_pos = np.random.random((2)) * 2 * interior - interior
+        self.ball_pos = self.sim.data.qpos[:2]
         self.goal_pos = np.random.random((2)) * 2 * interior - interior # np.random.random((2)) * 2 * interior - interior
         qpos = np.concatenate((self.ball_pos, self.goal_pos))
-        qvel = np.zeros(self.init_qvel.shape)
+        # qvel = np.zeros(self.init_qvel.shape)
+        qvel = self.sim.data.qvel[:]
         self.set_state(qpos, qvel)
         ob = self.get_obs()
         return ob
